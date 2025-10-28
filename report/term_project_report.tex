@@ -115,7 +115,23 @@ Other approaches include dynamic IFC (e.g. LIO monad in Haskell \cite{stefan2011
 
 \section{Further Work and Conclusion}
 
+In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the two-point security semiring $\{\public\sqsubseteq\secret\}$, our system statically tracks data labels at the type level. And with typing rules that enforcing the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
+
+Despite these positive results, \textsc{FlowSTLC} in its current form is an \emph{idealized model} with clear limitations. For one, the core calculus is deliberately small and omits many practical language features. It has only base types and functions (no records, no algebraic data types, no recursive types, etc.), and it does not include polymorphism or dependent typing. As observed in prior work, static IFC models with minimal features have historically been considered "too limited or too restrictive to be used in practice" \cite{myers1999jflow}. Thus, our model inherits this limitation of expressiveness. Second, \textsc{FlowSTLC} exists only as a theoretical calculus and has not been integrated into a full-blown programming language. We consider that bridging this gap is a non-trivial challenge. For example, a recent survey noted that even in a rich language like Rust, implementing a sound IFC system requires "building an ad-hoc effect tracking system using bleeding-edge features of the Rust compiler". Finally, we have not evaluated performance or conducted real-world case studies. There are no benchmarks on typing or runtime costs, nor have we applied \text{FlowSTLC} to any non-trivial programs. In contrast, systems like JFlow and Cocoon \cite{lamba2024cocoon} have shown that static IFC checking can incur negligible overhead. Without such evaluation, the practical impact of \textsc{FlowSTLC} remains speculative.
+
+Given these limitations, there are many promising directions for future work. We highlight several concrete directions:
+\begin{itemize}
+    \item \textbf{Extending the type system with dependent types and polymorphism.} One natural extension is to enrich \textsc{FlowSTLC} with more expressive typing disciplines. In particular, adding \emph{dependent types} could allow security policies to depend on program values and thus encode more precise confidentiality and declassification properties. Prior work (e.g. DepSec for Idris language \cite{gregersen2019dependently}) shows that dependent types increase the expressiveness of static IFCs. Similarly, introducing \emph{parametric polymorphism} would permit writing generic secure functions without duplicating code.
+    \item \textbf{Combining graded modalities with effect, usage, or resource typing.} Another interesting direction is to study how the security grading interacts with other static analyses. Graded type theories generalize both effect systems (via graded monads) and coeffect/usage systems (via graded comonads). For example, \textsc{FlowSTLC} might be extended with an effect system that tracks side-effects or I/O on secret data (similar to Koka's effect typing system \cite{leijen2014koka} \cite{leijen2016algebraic}). Alternatively, one could explore \emph{coeffect-like} analyses where the context is graded alongside security. Integrating graded security labels with \emph{resource-} or \emph{capability-aware typing} could yield richer guarantees.
+    \item \textbf{Embedding \textsc{FlowSTLC} in a practical language or compiler.} To bring theory closer to practice, a implementation of \text{FlowSTLC}'s typing discipline in a real programming environment is essential. One approach is to create a domain-specific language (DSL) or library for an existing language (e.g. Haskell or OCaml) that enforces these graded security types. Recent work (e.g. \cite{lamba2024cocoon}) shows that it is possible to add IFC to Rust without modifying the compiler. Similarly, the Granule project \cite{orchard2019quantitative} demonstrates that a language with graded, linear, and dependent types can be realized in practice. Following these examples, we could adapt \textsc{FlowSTLC}'s type checker into an implementation (for instance, a GHC plugin) to test on larger codebases. Such an embedding would enable empirical measurement of type-checking performance and runtime costs. It would also allow exploration of practical issues (language interoperability, tooling integration, etc.) that are vital for any real applications of our outcome.
+\end{itemize}
+
+In conclusion, \textsc{FlowSTLC} provides a formal foundation for secure information flow via graded modal types, but many challenges remain. Future work will pursue richer type features, deeper integration with program reasoning (effects, resources), and practical implementation efforts. We are optimistic that bridging these gaps will bring secure flow typing closer to real-world programming. By pursuing these directions, we hope to develop a mature framework that combines the rigorous guarantees of our type-theoretic approach with the expressiveness and practicality needed for deployed systems.
+
 \section*{Acknowledgment}
+We would like to express our sincere gratitude to the Theoretical Computer Science StackExchange user taquetgauche, who reviewed our early prototype type systems and provided valuable feedback on how to proceed.
+
+We are also deeply thankful to all members of the Theoretical Computer Science Society of SUSTech for their continued support and for the many insightful ideas they shared with us throughout this project.
 
 \bibliographystyle{IEEEtran}
 \bibliography{term_project_report}
@@ -331,7 +347,7 @@ $$
 \begin{proof}
 	By induction on a derivation of the form $\Gamma,x:S\vdash t:T$. For a given derivation, we proceed by cases on the final typing rule used in the proof.
 	\begin{itemize}		
-		\item\textit{Case} \textsc{T-Var}: $t=z$ with $z:T\in(\Gamma,x:S)$
+		\item\textbf{Case} \textsc{T-Var}: $t=z$ with $z:T\in(\Gamma,x:S)$
 		
 		We need to consider two subcases: 
 		\begin{enumerate}
@@ -339,39 +355,49 @@ $$
 			\item otherwise $[x\mapsto s]z\to z$, and the result is immediate.
 		\end{enumerate}	
 		
-		\item\textit{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
+		\item\textbf{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
 		
 		By convention we may assume that $x\ne y$ and $y\notin FV(s)$. Then by the permutation lemma and weakening rule, we have $\Gamma,\Delta,y:T_2,x:S\vdash t_1:T_1$. Again we apply the two rules on the assumption $\Delta\vdash s:S$ to get $\Gamma,\Delta,y:T_2\vdash s:S$. By the induction hypothesis, we have $\Gamma,\Delta,y:T_2\vdash [x\mapsto s]t_1:T_1$, then by \textsc{T-Abs} $\Gamma,\Delta\vdash \lam{y:T_2}{[x\mapsto s]t_1}:T_2\to T_1$, and this is our desired result.
 		
-		\item\textit{Case} \textsc{T-App}: $t=t_1\; t_2$, $\Gamma,x:S\vdash t_1:T_2\to T_1$, $\Gamma,x:S\vdash t_2:T_2$, $T=T_1$
+		\item\textbf{Case} \textsc{T-App}: $t=t_1\; t_2$, $\Gamma,x:S\vdash t_1:T_2\to T_1$, $\Gamma,x:S\vdash t_2:T_2$, $T=T_1$
 		
-		By the induction hypothesis, we have $\Gamma\vdash [x\mapsto s]t_1:T_2\to T_1$ and $\Gamma\vdash [x\mapsto s]t_2:T_2$. Then by \textsc{T-App}, $\Gamma\vdash [x\mapsto s]t_1\; [x\mapsto s]t_2:T_1$, i.e., $\Gamma\vdash [x\mapsto s](t_1\; t_2):T_1$.
+		By the induction hypothesis, we have $\Gamma,\Delta\vdash [x\mapsto s]t_1:T_2\to T_1$ and $\Gamma,\Delta\vdash [x\mapsto s]t_2:T_2$. Then by \textsc{T-App}, $\Gamma,\Delta\vdash [x\mapsto s]t_1\; [x\mapsto s]t_2:T_1$, i.e., $\Gamma,\Delta\vdash [x\mapsto s](t_1\; t_2):T_1$.
 		
-		\item\textit{Case} \textsc{T-Weak}: $t=t_1$, $\Gamma'\vdash t_1:T$ where $\Gamma'\subseteq(\Gamma,x:S)$ and $(\Gamma,x:S)-\Gamma'$ does not contain assumptions graded by $\public$.
+		\item\textbf{Case} \textsc{T-Weak}: $t=t_1$, $\Gamma'\vdash t_1:T$ where $\Gamma'\subseteq(\Gamma,x:S)$ and $x:S\in\Gamma'$
 		
-		By the induction hypothesis, we have $\Gamma'\vdash [x\mapsto s]t_1:T$, then apply the \textsc{T-Weak}, we have $\Gamma,x:S\vdash [x\mapsto s]t_1:T$.
+		By the induction hypothesis, we have $\Gamma',\Delta\vdash [x\mapsto s]t_1:T$, then apply the \textsc{T-Weak}, we have $\Gamma,\Delta\vdash [x\mapsto s]t_1:T$.
 		
-		\item\textit{Case} \textsc{T-Der}: $t=t_1$, $T=T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
+		\item\textbf{Case} \textsc{T-Der}: $t=t_1$, $T=T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
 		
-		By the induction hypothesis and permutation lemma, we have $\Gamma,y:T_2\vdash [x\mapsto s]t_1:T_1$. Then by the \text{T-Der} rule, we immediately have our desired result $\Gamma,y:[T_2]_\public\vdash [x\mapsto s]t_1:T_1$.
+		By the induction hypothesis and permutation lemma, we have $\Gamma,\Delta,y:T_2\vdash [x\mapsto s]t_1:T_1$. Then by the \text{T-Der} rule, we immediately have our desired result $\Gamma,\Delta,y:[T_2]_\public\vdash [x\mapsto s]t_1:T_1$.
 		
-		\item\textit{Case} \textsc{T-Pro}:
+		\item\textbf{Case} \textsc{T-Pro}:
 		
 		This case is impossible since \textsc{T-Pro} rule requires a purely graded context, and $x:S$ would violate the premise.
 		
-		\item\textit{Case} \textsc{T-Let}: $t=\unp{y}{t_1}{t_2}$, $\Gamma_1,x:S\vdash t_1:\gradedt{\ell}{T_1}$, $\Gamma_2,y:[T_1]_\ell,x:S\vdash t_2:T_2$, $T=T_2$
+		\item\textbf{Case} \textsc{T-Let}: $t=\unp{y}{t_1}{t_2}$, $\Gamma_1,x:S\vdash t_1:\gradedt{\ell}{T_1}$, $\Gamma_2,y:[T_1]_\ell,x:S\vdash t_2:T_2$, $T=T_2$
 		
-		Again by convention we may assume that $x\ne y$ and $y\notin FV(s)$. First we apply the induction hypothesis to get $\Gamma_1\vdash [x\mapsto s]t_1:\gradedt{\ell}{T_1}$ and $\Gamma_2,y:[T_1]_\ell\vdash [x\mapsto s]t_2:T_2$. And it follows from the \textsc{T-Let} rule that $\Gamma_1+\Gamma_2\vdash\unp{y}{[x\mapsto s]t_1}{[x\mapsto s]t_2}:T_2$, i.e., $\Gamma_1+\Gamma_2\vdash[x\mapsto s](\unp{y}{t_1}{t_2}):T_2$.
+		Again by convention we may assume that $x\ne y$ and $y\notin FV(s)$. First we apply the induction hypothesis to get $\Gamma_1,\Delta\vdash [x\mapsto s]t_1:\gradedt{\ell}{T_1}$ and $\Gamma_2,\Delta,y:[T_1]_\ell\vdash [x\mapsto s]t_2:T_2$. And it follows from the \textsc{T-Let} rule that $(\Gamma_1+\Gamma_2),\Delta\vdash\unp{y}{[x\mapsto s]t_1}{[x\mapsto s]t_2}:T_2$, i.e., $(\Gamma_1+\Gamma_2),\Delta\vdash[x\mapsto s](\unp{y}{t_1}{t_2}):T_2$.
 		
-		\item\textit{Case} \textsc{T-Approx}: $t=t_1$, $\Gamma,x:S,y:[T_2]_{\ell_1}\vdash t_1:T_1$, $\ell_1\sqsubseteq\ell_2$, $T=T_1$.
+		\item\textbf{Case} \textsc{T-Approx}: $t=t_1$, $\Gamma,x:S,y:[T_2]_{\ell_1}\vdash t_1:T_1$, $\ell_1\sqsubseteq\ell_2$, $T=T_1$.
 		
-		From the induction hypothesis and permutation lemma we can get $\Gamma,y:[T_2]_{\ell_1}\vdash[x\mapsto s]t_1:T_1$. Then we apply the \textsc{T-Approx} rule to get our desired result $\Gamma,y:[T_2]_{\ell_2}\vdash[x\mapsto s]t_1:T_1$.
+		From the induction hypothesis and permutation lemma we can get $\Gamma,\Delta,y:[T_2]_{\ell_1}\vdash[x\mapsto s]t_1:T_1$. Then we apply the \textsc{T-Approx} rule to get our desired result $\Gamma,\Delta,y:[T_2]_{\ell_2}\vdash[x\mapsto s]t_1:T_1$.
 	\end{itemize}
 \end{proof}
 
 \subsubsection{Well-typed Graded Substitution}
 \begin{proof}
-	
+	Similar to how we prove the regular substitution lemma, we proceed by induction on a derivation of the form $\Gamma,x:[S]_\ell\vdash t:T$.
+    \begin{itemize}
+        \item \textbf{Case} \textsc{T-Var}:
+        \item \textbf{Case} \textsc{T-Abs}:
+        \item \textbf{Case} \textsc{T-App}:
+        \item \textbf{Case} \textsc{T-Weak}:
+        \item \textbf{Case} \textsc{T-Der}:
+        \item \textbf{Case} \textsc{T-Pro}:
+        \item \textbf{Case} \textsc{T-Let}:
+        \item \textbf{Case} \textsc{T-Approx}:
+    \end{itemize}
 \end{proof}
 
 \subsubsection{Type Preservation}
