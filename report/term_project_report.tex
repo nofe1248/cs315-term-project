@@ -50,7 +50,7 @@ Shenzhen, China \\
 \maketitle
 
 \begin{abstract}
-In this project, we introduce the design and implementation of a simple functional programming language with a type system that enforces secure information flow. Building on the simply-typed lambda calculus (STLC), we extend the type system with a graded modality with a security semiring. Inspired by Graded Modal Dependent Type Theory (Moon, Eades, Orchard), our system statically prevents unauthorized flows of sensitive data into public outputs, ensuring the noninterference property.
+In this project, we introduce the design and implementation of a simple functional programming language with a type system that enforces secure information flow. Building on the simply-typed lambda calculus (STLC), we extend the type system with a graded modality with a security semiring. Inspired by \textit{Graded Modal Dependent Type Theory} \cite{moon2021graded}, our system statically prevents unauthorized flows of sensitive data into public outputs, ensuring the noninterference property \cite{smith2007principles}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -58,6 +58,12 @@ Computer security, information flow, noninterference, security-type systems
 \end{IEEEkeywords}
 
 \section{Introduction}
+
+Modern software often handles sensitive data that must remain confidential. The \emph{informational flow control} (or IFC) aims to ensure that high-security inputs of the program do not improperly influence low-security outputs. For example, private user information like passwords should never be leaked to public logs. Formally, the security policy of \emph{noninterference} requires that variations in high-security inputs have no observable effect on low-security outputs. Intuitively, this means that changing a secret value should never cause any change in what an outside observer at low level sees. Violating the IFC principle can lead to information leak, so enforcing noninterference is critical for system security.
+
+Type systems \cite{sabelfeld2003language} have been proved effective at enforcing noninterference: they associate each value with aa security label and constrain operations so that a well-typed program is guaranteed not to leak high-security information. For example, a simple rule is that the result of a computation must have the hightest security label of any input used in its computation. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
+
+However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\public\sqsubseteq\secret\}$. This system will allow us precisely control how the values interact as a type of coeffects, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
 
 \section{\textsc{FlowSTLC}: The Core Calculus}
 \subsection{Syntax}
@@ -80,46 +86,9 @@ The proof for the permutation lemma is trivial since assumptions in contexts are
 	If $\Gamma,x:S\vdash t:T$ and $\Delta\vdash s:S$, then $\Gamma,\Delta\vdash [x\mapsto s]t:T$.
 \end{lemma}
 
-\begin{proof}
-	By induction on a derivation of the form $\Gamma,x:S\vdash t:T$. For a given derivation, we proceed by cases on the final typing rule used in the proof.
-	\begin{itemize}		
-		\item\textit{Case} \textsc{T-Var}: $t=z$ with $z:T\in(\Gamma,x:S)$
-		
-		We need to consider two subcases: 
-		\begin{enumerate}
-			\item if $z=x$, then $[x\mapsto s]z\to[x\mapsto s]x\to s$. So we need to show $\Gamma,\Delta\vdash s:S$. To get this we apply the \textsc{T-Weak} rule and the permutation lemma to the assumption $\Delta\vdash s:S$ which will give us desired result.
-			\item otherwise $[x\mapsto s]z\to z$, and the result is immediate.
-		\end{enumerate}	
-		
-		\item\textit{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
-		
-		First by the permutation lemma and weakening rule, we have $\Gamma,\Delta,y:T_2,x:S\vdash t_1:T_1$. Again we apply the two rules on the assumption $\Delta\vdash s:S$ to get $\Gamma,\Delta,y:T_2\vdash s:S$. By the induction hypothesis, we have $\Gamma,\Delta,y:T_2\vdash [x\mapsto s]t_1:T_1$, then by \textsc{T-Abs} $\Gamma,\Delta\vdash \lam{y:T_2}{[x\mapsto s]t_1}:T_2\to T_1$, and this is our desired result.
-		
-		\item\textit{Case} \textsc{T-App}: $t=t_1\; t_2$, $\Gamma,x:S\vdash t_1:T_2\to T_1$, $\Gamma,x:S\vdash t_2:T_2$, $T=T_1$
-		
-		By the induction hypothesis, we have $\Gamma\vdash [x\mapsto s]t_1:T_2\to T_1$ and $\Gamma\vdash [x\mapsto s]t_2:T_2$. Then by \textsc{T-App}, $\Gamma\vdash [x\mapsto s]t_1\; [x\mapsto s]t_2:T_1$, i.e., $\Gamma\vdash [x\mapsto s](t_1\; t_2):T_1$.
-		
-		\item\textit{Case} \textsc{T-Weak}: $t=t_1$, $\Gamma'\vdash t_1:T$ where $\Gamma'\subseteq(\Gamma,x:S)$ and $(\Gamma,x:S)-\Gamma'$ does not contain assumptions graded by $\public$.
-		
-		By the induction hypothesis, we have $\Gamma'\vdash [x\mapsto s]t_1:T$, then apply the \textsc{T-Weak}, we have $\Gamma,x:S\vdash [x\mapsto s]t_1:T$.
-		
-		\item\textit{Case} \textsc{T-Der}:
-		
-		\item\textit{Case} \textsc{T-Pro}:
-		
-		\item\textit{Case} \textsc{T-Let}:
-		
-		\item\textit{Case} \textsc{T-Approx}:
-	\end{itemize}
-\end{proof}
-
 \begin{lemma}[Well-typed Graded Substitution] 
 	If $\Gamma,x:[S]_\ell\vdash t:T$ and $[\Delta]\vdash s:S$, then $\Gamma,\ell\cdot\Delta\vdash [x\mapsto s]t:T$.
 \end{lemma}
-
-\begin{proof}
-	
-\end{proof}
 
 \subsection{Type Preservation}
 \begin{theorem}[Type Preservation]
@@ -138,12 +107,20 @@ The proof for the permutation lemma is trivial since assumptions in contexts are
 
 \section{Related Work}
 
+Language-based IFC has a rich literature. Sabelfeld and Myers \cite{sabelfeld2003language} survey a variety of security type systems that enforce noninterference via typing. Seminal work by Volpano \emph{et al.} \cite{volpano1996sound} introduced a static type system for a simple imperative language, ensuring well-typed programs satisfy noninterference. Extensions include JFlow \cite{myers1999jflow} and JIF \cite{pullicino2014jif} for Java, which associate security labels with Java types to track flows, and FlowCaml \cite{simonet2003flow} for OCaml, which similarly adds a security type-checker. Generally, these systems label each variable as high or low and enforce rules so that no operation can use a high value in a low context.
+
+More recently, graded type theories have been proposed to generalize such analyses. Graded type systems annotate types with additional information ("grades") to capture various properties of programs. For example, the Granule language \cite{orchard2019quantitative} uses graded modalities to track the effects and coeffects of program. In information flow use-cases, types are graded by a security lattice, allowing automatic enforcement of noninterference. Moon \emph{et al.} introduce the Graded Modal Dependent Type Theory (\textsc{GrTT}) \cite{moon2021graded}, which extends dependent type system with graded modality and show that the grades can be effective at reasoning of programs. This work demonstrates that graded modality can capture fine-grained flow policies in types. Similarly, Marshall and Orchard \citen{marshall2023graded} demonstrated a graded-modal framework that can enforce confidentiality and even integrity simultaneously.
+
+Other approaches include dynamic IFC (e.g. LIO monad in Haskell \cite{stefan2011flexible}) or hybrid systems, but our focus is purely static. In summary, while classical security type sytems (JIF, FlowCaml, etc.) enforce noninterference via fixed lattice-labels. Our project draws on these ideas: we adapt graded modalities to a simple functional language to track information flows more flexibly.
+
 \section{Further Work and Conclusion}
 
 \section*{Acknowledgment}
 
-\section*{References}
+\bibliographystyle{IEEEtran}
+\bibliography{term_project_report}
 
+\newpage
 \appendix
 
 \subsection{Complete Specification of \textsc{FlowSTLC}}
@@ -237,7 +214,6 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	\RightLabel{\textsc{T-Weak}}
 	\UIC{$\Gamma,\Gamma'\vdash t:T$}
 \end{prooftree}
-where $\Gamma'$ denotes a context containing only regular assumptions and assumptions graded by $\public$.
 
 \begin{prooftree}
     \AXC{$\Gamma,x:T_1\vdash t:T_2$}
@@ -250,6 +226,7 @@ where $\Gamma'$ denotes a context containing only regular assumptions and assump
 	\RightLabel{\textsc{T-Pro}}
 	\UIC{$\ell\cdot[\Gamma]\vdash[t]:\gradedt{\ell}{T}$}
 \end{prooftree}
+where $[\Gamma]$ denotes a context containing only graded assumptions.
 
 \begin{prooftree}
 	\AXC{$\Gamma_1\vdash t_1:\gradedt{\ell}{T_1}$}
@@ -259,10 +236,10 @@ where $\Gamma'$ denotes a context containing only regular assumptions and assump
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$\Gamma,x:[T]_{\ell_1},\Gamma'\vdash t:T$}
+	\AXC{$\Gamma,x:[T_2]_{\ell_1}\vdash t:T_1$}
 	\AXC{$\ell_1\sqsubseteq\ell_2$}
 	\RightLabel{\textsc{T-Approx}}
-	\BIC{$\Gamma,x:[T]_{\ell_2},\Gamma'\vdash t:T$}
+	\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
 \end{prooftree}
 
 \subsubsection{Evaluation Rules}
@@ -348,5 +325,57 @@ $$
 		\end{equation}
 	\end{itemize}
 	Thus the security level algebra is a semiring.
+\end{proof}
+
+\subsubsection{Well-typed substitution}
+\begin{proof}
+	By induction on a derivation of the form $\Gamma,x:S\vdash t:T$. For a given derivation, we proceed by cases on the final typing rule used in the proof.
+	\begin{itemize}		
+		\item\textit{Case} \textsc{T-Var}: $t=z$ with $z:T\in(\Gamma,x:S)$
+		
+		We need to consider two subcases: 
+		\begin{enumerate}
+			\item if $z=x$, then $[x\mapsto s]z\to[x\mapsto s]x\to s$. So we need to show $\Gamma,\Delta\vdash s:S$. To get this we apply the \textsc{T-Weak} rule and the permutation lemma to the assumption $\Delta\vdash s:S$ which will give us desired result.
+			\item otherwise $[x\mapsto s]z\to z$, and the result is immediate.
+		\end{enumerate}	
+		
+		\item\textit{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
+		
+		By convention we may assume that $x\ne y$ and $y\notin FV(s)$. Then by the permutation lemma and weakening rule, we have $\Gamma,\Delta,y:T_2,x:S\vdash t_1:T_1$. Again we apply the two rules on the assumption $\Delta\vdash s:S$ to get $\Gamma,\Delta,y:T_2\vdash s:S$. By the induction hypothesis, we have $\Gamma,\Delta,y:T_2\vdash [x\mapsto s]t_1:T_1$, then by \textsc{T-Abs} $\Gamma,\Delta\vdash \lam{y:T_2}{[x\mapsto s]t_1}:T_2\to T_1$, and this is our desired result.
+		
+		\item\textit{Case} \textsc{T-App}: $t=t_1\; t_2$, $\Gamma,x:S\vdash t_1:T_2\to T_1$, $\Gamma,x:S\vdash t_2:T_2$, $T=T_1$
+		
+		By the induction hypothesis, we have $\Gamma\vdash [x\mapsto s]t_1:T_2\to T_1$ and $\Gamma\vdash [x\mapsto s]t_2:T_2$. Then by \textsc{T-App}, $\Gamma\vdash [x\mapsto s]t_1\; [x\mapsto s]t_2:T_1$, i.e., $\Gamma\vdash [x\mapsto s](t_1\; t_2):T_1$.
+		
+		\item\textit{Case} \textsc{T-Weak}: $t=t_1$, $\Gamma'\vdash t_1:T$ where $\Gamma'\subseteq(\Gamma,x:S)$ and $(\Gamma,x:S)-\Gamma'$ does not contain assumptions graded by $\public$.
+		
+		By the induction hypothesis, we have $\Gamma'\vdash [x\mapsto s]t_1:T$, then apply the \textsc{T-Weak}, we have $\Gamma,x:S\vdash [x\mapsto s]t_1:T$.
+		
+		\item\textit{Case} \textsc{T-Der}: $t=t_1$, $T=T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
+		
+		By the induction hypothesis and permutation lemma, we have $\Gamma,y:T_2\vdash [x\mapsto s]t_1:T_1$. Then by the \text{T-Der} rule, we immediately have our desired result $\Gamma,y:[T_2]_\public\vdash [x\mapsto s]t_1:T_1$.
+		
+		\item\textit{Case} \textsc{T-Pro}:
+		
+		This case is impossible since \textsc{T-Pro} rule requires a purely graded context, and $x:S$ would violate the premise.
+		
+		\item\textit{Case} \textsc{T-Let}: $t=\unp{y}{t_1}{t_2}$, $\Gamma_1,x:S\vdash t_1:\gradedt{\ell}{T_1}$, $\Gamma_2,y:[T_1]_\ell,x:S\vdash t_2:T_2$, $T=T_2$
+		
+		Again by convention we may assume that $x\ne y$ and $y\notin FV(s)$. First we apply the induction hypothesis to get $\Gamma_1\vdash [x\mapsto s]t_1:\gradedt{\ell}{T_1}$ and $\Gamma_2,y:[T_1]_\ell\vdash [x\mapsto s]t_2:T_2$. And it follows from the \textsc{T-Let} rule that $\Gamma_1+\Gamma_2\vdash\unp{y}{[x\mapsto s]t_1}{[x\mapsto s]t_2}:T_2$, i.e., $\Gamma_1+\Gamma_2\vdash[x\mapsto s](\unp{y}{t_1}{t_2}):T_2$.
+		
+		\item\textit{Case} \textsc{T-Approx}: $t=t_1$, $\Gamma,x:S,y:[T_2]_{\ell_1}\vdash t_1:T_1$, $\ell_1\sqsubseteq\ell_2$, $T=T_1$.
+		
+		From the induction hypothesis and permutation lemma we can get $\Gamma,y:[T_2]_{\ell_1}\vdash[x\mapsto s]t_1:T_1$. Then we apply the \textsc{T-Approx} rule to get our desired result $\Gamma,y:[T_2]_{\ell_2}\vdash[x\mapsto s]t_1:T_1$.
+	\end{itemize}
+\end{proof}
+
+\subsubsection{Well-typed Graded Substitution}
+\begin{proof}
+	
+\end{proof}
+
+\subsubsection{Type Preservation}
+\begin{proof}
+	
 \end{proof}
 \end{document}
