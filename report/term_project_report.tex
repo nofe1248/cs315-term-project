@@ -191,6 +191,21 @@ $$
 
 \subsection{Graded Modality}
 
+The central innovation of \textsc{FlowSTLC} is the use of a graded modality $\gradedt{\ell}{T}$ to track and control information flow. This modality is parameterized by a security grade $\ell$ drawn from the semiring $\{\secret\sqsubseteq\public\}$, where the ordering signifies that $\secret$ information is more sensitive than $\public$.
+
+Intuitively, a term of type $\gradedt{\ell}{T}$ is a value that should be used according to some security policies, the grade $\ell$ attached to the modality acts as a capability or a requirement: it specifies the minimum security level of the context necessary to "unbox" and use the value.
+
+The power of this approach lies in the algebraic structure of the security semiring. The semiring operations (meet for addition, join for multiplication) naturally model the combination of security constraints:
+
+\begin{itemize}
+	\item \textbf{Context Concatenation} uses the meet operation ($\sqcap$) to combine graded assumptions for the same variable. This reflects the principle that the combined context should have at least the sensitivity of its most restrictive part. For example, using a variable in two different parts of a program, one requiring $\secret$ and the other $\public$, results in a combined requirement of $\secret$ ($\secret\sqcap\public = \secret$).
+	
+	\item \textbf{Context Scalar Multiplication} uses the join operation ($\sqcup$) to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
+\end{itemize}
+
+
+In essence, the graded modality $\gradedt{\ell}{T}$ serves as a security-aware container. The type system's rules ensure that the "capability" $\ell$ needed to open this container is always respected, thereby statically guaranteeing that high-sensitivity data cannot flow into low-sensitivity outputs.
+
 \subsection{A Simple Example}
 
 We demonstrate the system's capability of enforcing noninterferencee by showing the system would reject the following program:
