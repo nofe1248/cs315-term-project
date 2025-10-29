@@ -19,6 +19,7 @@
 \newcommand\public{\texttt{Public}}
 \newcommand\secret{\texttt{Secret}}
 \newcommand\irrele{\texttt{Irrelevant}}
+\newcommand\secure{\mathbb{S}}
 
 \newtheorem{definition}{Definition}
 \newtheorem{theorem}{Theorem}
@@ -63,7 +64,7 @@ Modern software often handles sensitive data that must remain confidential. The 
 
 Type systems \cite{sabelfeld2003language} have been proved effective at enforcing noninterference: they associate each value with aa security label and constrain operations so that a well-typed program is guaranteed not to leak high-security information. For example, a simple rule is that the result of a computation must have the hightest security label of any input used in its computation. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
 
-However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\secret\sqsubseteq\public\}$. This system will allow us precisely control how the values interact as a type of coeffects, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
+However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\irrele\sqsubseteq\secret\sqsubseteq\public\}$. This system will allow us precisely control how the values interact as a type of coeffects, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
 
 \section{\textsc{FlowSTLC}: The Core Calculus}
 \subsection{Syntax}
@@ -79,7 +80,7 @@ $$
 \end{aligned}
 $$
 
-The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $(\{\public,\secret\},\sqcap,\public,\sqcup,\secret)$.
+The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\irrele\sqsubseteq\secret\sqsubseteq\public$.
 
 Typing judgements are of the regular form $\Gamma\vdash t:T$ with the typing contexts of the form:
 $$
@@ -146,7 +147,7 @@ where $[\Gamma]$ denotes a context containing only graded assumptions.
 	\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
 \end{prooftree}
 
-The \emph{Dereliction} rule \textsc{T-Der} converts a regular assumption to a graded assumption marked with $\secret$, since the assumption is potentially being used by the term $t$. The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to "loosen" the requirement if $\ell_1\sqsubseteq\ell_2$.
+The \emph{Dereliction} rule \textsc{T-Der} converts a regular assumption to a graded assumption marked with $\secret$, since the assumption is potentially being used by the term $t$. The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to "tighten" the requirement if $\ell_1\sqsubseteq\ell_2$.
 
 \subsection{Operational Semantics}
 
@@ -191,16 +192,16 @@ $$
 
 \subsection{Graded Modality}
 
-The central innovation of \textsc{FlowSTLC} is the use of a graded modality $\gradedt{\ell}{T}$ to track and control information flow. This modality is parameterized by a security grade $\ell$ drawn from the semiring $\{\secret\sqsubseteq\public\}$, where the ordering signifies that $\secret$ information is more sensitive than $\public$.
+The central innovation of \textsc{FlowSTLC} is the use of a graded modality $\gradedt{\ell}{T}$ to track and control information flow. This modality is parameterized by a security grade $\ell$ drawn from the semiring $\secure$, where the ordering signifies that $\secret$ information is more sensitive than $\public$.
 
 Intuitively, a term of type $\gradedt{\ell}{T}$ is a value that should be used according to some security policies, the grade $\ell$ attached to the modality acts as a capability or a requirement: it specifies the minimum security level of the context necessary to "unbox" and use the value.
 
 The power of this approach lies in the algebraic structure of the security semiring. The semiring operations (meet for addition, join for multiplication) naturally model the combination of security constraints:
 
 \begin{itemize}
-	\item \textbf{Context Concatenation} uses the meet operation ($\sqcap$) to combine graded assumptions for the same variable. This reflects the principle that the combined context should have at least the sensitivity of its most restrictive part. For example, using a variable in two different parts of a program, one requiring $\secret$ and the other $\public$, results in a combined requirement of $\secret$ ($\secret\sqcap\public = \secret$).
+	\item \textbf{Context Concatenation} uses the join operation ($\sqcap$) to combine graded assumptions for the same variable. This reflects the principle that if a value can be used publicly, them it should also can be used secretly elsewhere. For example, using a variable in two different parts of a program, one requiring $\secret$ and the other $\public$, results in a combined requirement of $\secret$ ($\secret\sqcup\public = \public$).
 	
-	\item \textbf{Context Scalar Multiplication} uses the join operation ($\sqcup$) to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
+	\item \textbf{Context Scalar Multiplication} also uses the join operation ($\sqcup$) with a exception when one label is $\irrele$. to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
 \end{itemize}
 
 
@@ -239,26 +240,41 @@ which is clearly impossible with $\texttt{Secret}\sqsubseteq\texttt{Public}$.
 \end{lemma}
 The proof for the permutation lemma is trivial since assumptions in contexts are unrelated in a simply-typed context. The permutation lemma enables us to state the two substitution lemmas in a cleaner form, we first prove the well-typedness of substitution through regular assumptions:
 \begin{lemma}[Well-typed Substitution] 
-	If $\Gamma,x:S\vdash t:T$ and $\Delta\vdash s:S$, then $\Gamma,\Delta\vdash [x\mapsto s]t:T$.
+	If $\Gamma,x:S\vdash t:T$ and $\Delta\vdash s:S$, then $\Gamma+\Delta\vdash [x\mapsto s]t:T$.
 \end{lemma}
 
 \begin{lemma}[Well-typed Graded Substitution] 
-	If $\Gamma,x:[S]_\ell\vdash t:T$ and $[\Delta]\vdash s:S$, then $\Gamma,\ell\cdot\Delta\vdash [x\mapsto s]t:T$.
+	If $\Gamma,x:[S]_\ell\vdash t:T$ and $[\Delta]\vdash s:S$, then $\Gamma+\ell\cdot\Delta\vdash [x\mapsto s]t:T$.
 \end{lemma}
 
 \subsection{Type Preservation}
 \label{thm-pre}
 \begin{theorem}[Type Preservation]
-	
+	If $\Gamma\vdash t:T$ and $t\to t'$, then $\Gamma\vdash t':T$
 \end{theorem}
 
 \subsection{Progression}
+\label{thm-pro}
+\begin{theorem}[Progression]
+	Suppose $t$ is a closed and well-typed \text{FlowSTLC} term (i.e., $\emptyset\vdash t:T$ for some $T$), then either $t$ is a value or there exists some $t'$ s.t. $t\to t'$.
+\end{theorem}
 
 \subsection{Strong Normalization}
+\label{thm-sn}
+\begin{theorem}[Strong Normalization]
+	If $t$ is a closed and well-typed \text{FlowSTLC} term, then $t$ is normalizable.
+\end{theorem}
 
 \subsection{Noninterference}
+\begin{definition}[Low-equivalence]
+	Two terms $t_1$	and $t_2$ are low-equivalent at security level $\ell$, written $t_1\approx_\ell t_2$, if they are identical except for the values of their subterms that have a grade $\ell'$ where $\ell\sqsubseteq\ell'$.	
+\end{definition}
+\label{thm-noninterference}
+\begin{theorem}[Noninterference]
+	For a closed and well-typed $\public$-graded term $t$, i.e. $\emptyset\vdash t:\gradedt{\public}{T}$ for some $T$. Then for two arbitrary executions $t\to^* v_1$ and $t\to^* v_2$ where only $\secret$-graded values differ, we have $v_1=v_2$.
+\end{theorem}
 
-\subsection{Type Checking Algorithm}
+\section{Bidirectional Type Checking Algorithm}
 
 \section{Implementation and Examples}
 
@@ -272,7 +288,7 @@ Other approaches include dynamic IFC (e.g. LIO monad in Haskell \cite{stefan2011
 
 \section{Further Work and Conclusion}
 
-In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the two-point security semiring $\{\secret\sqsubseteq\public\}$, our system statically tracks data labels at the type level. And with typing rules that enforcing the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
+In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the  security semiring $\secure$, our system statically tracks data labels at the type level. And with typing rules that enforcing the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
 
 Despite these positive results, \textsc{FlowSTLC} in its current form is an \emph{idealized model} with clear limitations. For one, the core calculus is deliberately small and omits many practical language features. It has only base types and functions (no records, no algebraic data types, no recursive types, etc.), and it does not include polymorphism or dependent typing. As observed in prior work, static IFC models with minimal features have historically been considered "too limited or too restrictive to be used in practice" \cite{myers1999jflow}. Thus, our model inherits this limitation of expressiveness. Second, \textsc{FlowSTLC} exists only as a theoretical calculus and has not been integrated into a full-blown programming language. We consider that bridging this gap is a non-trivial challenge. For example, a recent survey noted that even in a rich language like Rust, implementing a sound IFC system requires "building an ad-hoc effect tracking system using bleeding-edge features of the Rust compiler". Finally, we have not evaluated performance or conducted real-world case studies. There are no benchmarks on typing or runtime costs, nor have we applied \text{FlowSTLC} to any non-trivial programs. In contrast, systems like JFlow and Cocoon \cite{lamba2024cocoon} have shown that static IFC checking can incur negligible overhead. Without such evaluation, the practical impact of \textsc{FlowSTLC} remains speculative.
 
@@ -320,8 +336,9 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 		| $\Gamma,x\colon[T]_r$ : \textit{graded assumption}
 		;;
 		$\ell$ : \textsf{Security} ::=
-		| \texttt{Secret}
-		| \texttt{Public}
+		| \secret
+		| \public
+		| \irrele
 		;;
 	\end{bnf}
 \end{center}
@@ -329,12 +346,12 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 \subsubsection{Security Level Semiring}
 
 \begin{definition}[Security Level Semiring]
-The security level semiring is a two-point lattice of security levels $\{\secret\sqsubseteq\public\}$ with 
+The security level semiring $\mathbb{S}$ is a three-point lattice of security levels $\{\irrele\sqsubseteq\secret\sqsubseteq\public\}$ with 
 \begin{itemize}
-	\item $0=\public$
+	\item $0=\irrele$
 	\item $1=\secret$
-	\item Addition as the meet: $r+s=r\sqcap s$
-	\item Multiplication as the join: $r\cdot s=r\sqcup s$
+	\item Addition as the join: $r+s=r\cup s$
+	\item Multiplication as the join plus a special case: If $r$ or $s$ is $\irrele$, then $r\cdot s=\irrele$, otherwise $r\cdot s=r\sqcup s$
 \end{itemize}
 \end{definition}
 See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a semiring.
@@ -457,54 +474,78 @@ $$
 	\begin{itemize}
 		\item \textbf{Associativity of addition}: $(a+b)+c=a+(b+c)$
 		
-		This is trivial since the semiring addition is meet, and meet is associative in a lattice.
+		This is trivial since the semiring addition is join, and join is associative in a lattice.
 		\item \textbf{Commutativity of addition}: $a+b=b+a$
 		
-		This is also trivial since meet is commutative in a lattice.
+		This is also trivial since join is commutative in a lattice.
 		\item \textbf{Additive identity}: $a+0=a$ for all $a$
 		
-		Since $0=\public$ and $\secret\sqsubseteq\public$, we have
+		Since $0=\irrele$, and $\irrele$ be the minimum in $\secure$, we have
 		\begin{equation}
 			\begin{aligned}
-				\public\sqcap\secret&=\secret\\
-				\secret\sqcap\public&=\secret\\
-				\secret\sqcap\secret&=\secret\\
-				\public\sqcap\public&=\public				
+				\public\sqcup\irrele&=\public\\
+				\secret\sqcup\irrele&=\secret\\
+				\irrele\sqcup\irrele&=\irrele\\			
 			\end{aligned}
 		\end{equation}
 		\item \textbf{Associativity of multiplication}: $(a\cdot b)\cdot c=a\cdot (b\cdot c)$
 		
-		This is trivial since the semiring multiplication is join, and join is associative in a lattice.
+		This is trivial by the associativity of join operation and the absorption nature of $\irrele$.
 		
 		\item \textbf{Multiplication distributes over addition}: $a\cdot(b+c)=(a\cdot b)+(a\cdot c)$ and $(a+b)\cdot c=(a\cdot c)+(b\cdot c)$
 		
-		Since the lattice is a chain (and thus distributive), this holds.
-		\item \textbf{Multiplicative identity}: $1\cdot a=a\cdot 1=a$ for all $a$
+		\begin{itemize}
+			\item If $a=\irrele$, then $a\cdot(b+c)=\irrele$ and $(a\cdot b)+(a\cdot c)=\irrele+\irrele$.
+			\item Otherwise the distributivity comes from the associativity of the join operation.
+		\end{itemize}
 		
-		Since $1=\secret$ and $\secret\sqsubseteq\public$, we have
+		\item \textbf{Multiplicative identity}: Since $1=\secret$ and $\irrele\sqsubseteq\secret\sqsubseteq\public$, we have
 		\begin{equation}
 			\begin{aligned}
-				\public\sqcup\public&=\public\\
+				\secret\sqcup\secret&=\secret\\
 				\public\sqcup\secret&=\public\\
-				\secret\sqcup\public&=\public\\
-				\secret\sqcup\secret&=\secret
+				\irrele\sqcup\secret&=\irrele
 			\end{aligned}
 		\end{equation}
 		\item \textbf{Multiplication by 0 annihilates}: $0\cdot a=a\cdot 0=0$ for all $a$
 		
-		Since $0=\public$ and $\secret\sqsubseteq\public$, we have
-		\begin{equation}
-			\begin{aligned}
-				\public\sqcup\public&=\public\\
-				\public\sqcup\secret&=\public\\
-				\secret\sqcup\public&=\public
-			\end{aligned}
-		\end{equation}
+		This trivially holds to the absorption nature of $\irrele$.
 	\end{itemize}
 	Thus the security level algebra is a semiring.
 \end{proof}
 
 \subsubsection{Well-typed substitution}
+We state several technical lemmas without proof:
+\begin{lemma}[Restriction Collapse]
+	For two typing contexts $\Gamma_1$ and $\Gamma_2$, we have
+	$$
+	\Gamma_{1|\Gamma_2}+\Gamma_{2|\overline{\Gamma_2}}=\Gamma_1
+	$$
+\end{lemma}
+\begin{lemma}[Context Shuffle 1]
+	For typing contexts $\Gamma_1$, $\Gamma_1'$, and $\Gamma_2$, variable $x$ and type $T$, we have
+	$$
+	(\Gamma_1,x:T,\Gamma_1')+\Gamma_2=(\Gamma_1+\Gamma_{2|\Gamma_1}),x:T,(\Gamma_1'+\Gamma_{2|\overline{\Gamma_1}})
+	$$
+\end{lemma}
+\begin{lemma}[Context Shuffle 2]
+	For typing contexts $\Gamma_1$, $\Gamma_2$, and $\Gamma_2'$, variable $x$ and type $T$, we have
+	$$
+	\Gamma_1+(\Gamma_2,x:T,\Gamma_2')=(\Gamma_{1|\Gamma_2}),x:T,(\Gamma_1'+\Gamma_{2|\overline{\Gamma_1}})
+	$$
+\end{lemma}
+\begin{lemma}[Context Shuffle 3]
+	
+\end{lemma}
+\begin{lemma}[Distribution of Scalar Multiplication over Context Concatenation]
+	For typing context $\Gamma$ and two security levels $\ell_1,\ell_2\in\secure$, we have
+	$$
+	(\ell_1\cdot\Gamma)+(\ell_2\cdot\Gamma)=(\ell_1+\ell_2)\cdot\Gamma
+	$$
+\end{lemma}
+\begin{lemma}
+	
+\end{lemma}
 \begin{proof}
 	By induction on a derivation of the form $\Gamma,x:S\vdash t:T$. For a given derivation, we proceed by cases on the final typing rule used in the proof.
 	\begin{itemize}		
@@ -512,7 +553,7 @@ $$
 		
 		We need to consider two subcases: 
 		\begin{enumerate}
-			\item if $z=x$, then $[x\mapsto s]z\to[x\mapsto s]x\to s$. So we need to show $\Gamma,\Delta\vdash s:S$. To get this we apply the \textsc{T-Weak} rule and the permutation lemma to the assumption $\Delta\vdash s:S$ which will give us desired result.
+			\item if $z=x$, then $[x\mapsto s]z\to[x\mapsto s]x\to s$. So we need to show $\Gamma+\Delta\vdash s:S$. To get this first we apply the \textsc{T-Weak} rule to the assumption $\Delta\vdash s:S$,
 			\item otherwise $[x\mapsto s]z\to z$, and the result is immediate.
 		\end{enumerate}	
 		
@@ -550,8 +591,12 @@ $$
 \begin{proof}
 	Similar to how we prove the regular substitution lemma, we proceed by induction on a derivation of the form $\Gamma,x:[S]_\ell\vdash t:T$.
     \begin{itemize}
-        \item \textbf{Case} \textsc{T-Var}:
-        \item \textbf{Case} \textsc{T-Abs}:
+        \item \textbf{Case} \textsc{T-Var}: $t=z$ with $z:T\in(\Gamma,x:[S]_\ell)$
+        
+        Unlike the case for regular substitution lemma, $z$ cannot be $x$ since there is not rule that can introduce $\Gamma,\ell\cdot\Delta\vdash s:S$. So $z\ne x$, and we have $[x\mapsto s]z\to z$, and the result is immediate.
+        \item \textbf{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:[S]_\ell,y:T_2\vdash t_1:T_1$
+        
+        By convention we may assume that $x\notin FV(s)$. Then by
         \item \textbf{Case} \textsc{T-App}:
         \item \textbf{Case} \textsc{T-Weak}:
         \item \textbf{Case} \textsc{T-Der}:
