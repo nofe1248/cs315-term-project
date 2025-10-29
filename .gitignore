@@ -11,7 +11,7 @@
 *.fot
 *.cb
 *.cb2
-.*.lb
+*.lb
 *.bbl
 *.bcf
 *.blg
@@ -24,4 +24,4 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
-.DS_Store
+*.DS_Store

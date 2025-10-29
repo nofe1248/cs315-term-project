@@ -63,21 +63,162 @@ Modern software often handles sensitive data that must remain confidential. The 
 
 Type systems \cite{sabelfeld2003language} have been proved effective at enforcing noninterference: they associate each value with aa security label and constrain operations so that a well-typed program is guaranteed not to leak high-security information. For example, a simple rule is that the result of a computation must have the hightest security label of any input used in its computation. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
 
-However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\public\sqsubseteq\secret\}$. This system will allow us precisely control how the values interact as a type of coeffects, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
+However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\secret\sqsubseteq\public\}$. This system will allow us precisely control how the values interact as a type of coeffects, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
 
 \section{\textsc{FlowSTLC}: The Core Calculus}
 \subsection{Syntax}
 
-\subsection{The Security Semiring}
+The \textsc{FlowSTLC} is a graded extension to the simply typed lambda-calculus resembling the Fuzz type system of Reed \emph{et al.} \cite{reeddistance}. It is also similar to coeffect calculi of Brunel \emph{et al.} \cite{brunel2014core} and Gaboardi \emph{et al.} \cite{gaboardi2016combining}.
+
+The syntax of \textsc{FlowSTLC} is a straightforward extension of STLC with two additional constructs for introducing and eliminating the graded necessity type $\gradedt{\ell}{T}$:
+
+$$
+\begin{aligned}
+	\textsf{Term}\;t\;&::=\;x\;|\;t\; t\;|\;\lambda x.t\;|\;[t]\;|\;\textbf{let }[x]=t\textbf{ in }t\\
+	\textsf{Type}\;T\;&::=\;T\to T\;|\;\square_r T\\
+\end{aligned}
+$$
+
+The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $(\{\public,\secret\},\sqcap,\public,\sqcup,\secret)$.
+
+Typing judgements are of the regular form $\Gamma\vdash t:T$ with the typing contexts of the form:
+$$
+\textsf{Context}\;\Gamma\;::=\;\emptyset\;|\;\Gamma,x:T\;|\;\Gamma,x:[T]_\ell
+$$
+
+Contexts are either empty $\emptyset$, or can be extended with either a regular assumption $x:T$ or a \emph{graded assumption} $x:[T]_\ell$. The regular assumptions can be used exactly the same way as in STLC. For graded assumptions, their grades $\ell$ capture their substructural behavior by describing how can they be used in a term, in this case, the grade capture the security level of information. We will use $dom(\Gamma)$ to denote the variables assigned by context $\Gamma$.
 
 \subsection{Typing}
 
-\subsection{Evaluation}
+\textsc{FlowSTLC} has all three standard typing rules of STLC, plus a explicit weakening rule:
+\begin{prooftree}
+	\AXC{$x:T\in\Gamma$}
+	\RightLabel{\textsc{T-Var}}
+	\UIC{$\Gamma\vdash x:T$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma,x:T_1\vdash t:T_2$}
+	\RightLabel{\textsc{T-Abs}}
+	\UIC{$\Gamma\vdash\lam{x:T_1}{t}:T_1\to T_2$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma_1\vdash t_1:T_{11}\to T_{12}$}
+	\AXC{$\Gamma_2\vdash t_2:T_{11}$}
+	\RightLabel{\textsc{T-App}}
+	\BIC{$\Gamma_1+\Gamma_2\vdash t_1\; t_2:T_{12}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:T$}
+	\RightLabel{\textsc{T-Weak}}
+	\UIC{$\Gamma,\Gamma'\vdash t:T$}
+\end{prooftree}
+
+The exchange rule that allows permutation of contexts is implicit here, instead we enables the permutation by a permutation lemma (see \hyperref[lem-perm]{Permutation lemma}). The only difference with the standard rules is the application rule applies a \emph{context concatenation} $\Gamma_1+\Gamma_2$. The concatenation combines two contexts if they contain disjoint set of regular assumptions. Then the concatenation will combine all regular assumptions together and merge graded assumptions by the semiring addition $+$ (for more information see the \hyperref[def-concat]{Appendix}).
+
+The remaining rules build the structure of the security label semiring and connect the regular assumptions to the graded ones:
+\begin{prooftree}
+	\AXC{$\Gamma,x:T_1\vdash t:T_2$}
+	\RightLabel{\textsc{T-Der}}
+	\UIC{$\Gamma,x:[T_1]_\secret\vdash t:T_2$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$[\Gamma]\vdash t:T$}
+	\RightLabel{\textsc{T-Pro}}
+	\UIC{$\ell\cdot[\Gamma]\vdash[t]:\gradedt{\ell}{T}$}
+\end{prooftree}
+where $[\Gamma]$ denotes a context containing only graded assumptions.
+
+\begin{prooftree}
+	\AXC{$\Gamma_1\vdash t_1:\gradedt{\ell}{T_1}$}
+	\AXC{$\Gamma_2,x:[T_1]_\ell\vdash t_2:T_2$}
+	\RightLabel{\textsc{T-Let}}
+	\BIC{$\Gamma_1+\Gamma_2\vdash\unp{x}{t_1}{t_2}:T_2$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma,x:[T_2]_{\ell_1}\vdash t:T_1$}
+	\AXC{$\ell_1\sqsubseteq\ell_2$}
+	\RightLabel{\textsc{T-Approx}}
+	\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
+\end{prooftree}
+
+The \emph{Dereliction} rule \textsc{T-Der} converts a regular assumption to a graded assumption marked with $\secret$, since the assumption is potentially being used by the term $t$. The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to "loosen" the requirement if $\ell_1\sqsubseteq\ell_2$.
+
+\subsection{Operational Semantics}
+
+Once the type-checker shows that a program is well-typed, the AST is interpreted to execute following a standard call-by-value evaluation strategy. To make proving the \hyperref[thm-pre]{type preservation theorem} more easy, we specify the operational semantics of \textsc{FlowSTLC} in the small-step style. We first specify the value as lambda abstractions:
+$$
+\textsf{Value}\; v\;::=\;\lam{x\colon T}{t}
+$$
+
+The call-by-value reduction relation $t\to t'$ is then defined as follows:
+
+\begin{prooftree}
+	\AXC{$t_1\to t_1'$}
+	\RightLabel{\textsc{E-App1}}
+	\UIC{$t_1\; t_2\to t_1'\; t_2$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t_2\to t_2'$}
+	\RightLabel{\textsc{E-App2}}
+	\UIC{$v_1\; t_2\to v_1\; t_2'$}
+\end{prooftree}
+
+$$
+(\lam{x:T}{t})\; v\to [x\mapsto v]t\quad\textsc{E-AppAbs}
+$$
+
+\begin{prooftree}
+	\AXC{$t\to t'$}
+	\RightLabel{\textsc{E-Pro}}
+	\UIC{$[t]\to[t']$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t_1\to t_1'$}
+	\RightLabel{\textsc{E-Let-Eval}}
+	\UIC{$\unp{x}{t_1}{t_2}\to\unp{x}{t_1'}{t_2}$}
+\end{prooftree}
+
+$$
+\unp{x}{v}{t}\to [x\mapsto v]t\quad\textsc{E-Let-Unbox}
+$$
 
 \subsection{Graded Modality}
 
+\subsection{A Simple Example}
+
+We demonstrate the system's capability of enforcing noninterferencee by showing the system would reject the following program:
+$$
+\lam{x:\gradedt{\secret}{T}}{\textbf{let }[y]=x\textbf{ in }[y]}:\gradedt{\secret}{T}\to\gradedt{\public}{T}
+$$
+
+since it try to use a $\secret$ value to compute a $\public$ value. To type this term, we first need to show that
+$$
+x:\gradedt{\secret}{T}\vdash \textbf{let }[y]=x\textbf{ in }[y]:\gradedt{\secret}{T}\to\gradedt{\public}{T}
+$$
+
+then we need to show the following
+\begin{enumerate}
+	\item $x:\gradedt{\secret}{T}\vdash x:\gradedt{\secret}{T}$ 
+	\item $y:[T]_\secret\vdash [y]:\gradedt{\public}{T}$
+\end{enumerate}
+
+The (1) is trivial to show, but to prove the (2) typing judgement we need to use the $\textsf{T-Pro}$ rule on the judgement $y:T\vdash y:T$ (easy to obtain by \textsc{T-Var} rule), which requires us to show
+$$
+y:[T]_\ell\vdash y:T\quad\text{and}\quad \ell\cdot\texttt{Public}=\texttt{Secret}
+$$
+
+which is clearly impossible with $\texttt{Secret}\sqsubseteq\texttt{Public}$.
+
 \section{Metatheory}
 \subsection{Substitution}
+\label{lem-perm}
 \begin{lemma}[Permutation]
 	If $\Gamma\vdash t:T$ and $\Delta$ is a permutation of $\Gamma$, then $\Delta\vdash t:T$ and the derivation depth of the latter is the same as the former.
 \end{lemma}
@@ -91,6 +232,7 @@ The proof for the permutation lemma is trivial since assumptions in contexts are
 \end{lemma}
 
 \subsection{Type Preservation}
+\label{thm-pre}
 \begin{theorem}[Type Preservation]
 	
 \end{theorem}
@@ -115,7 +257,7 @@ Other approaches include dynamic IFC (e.g. LIO monad in Haskell \cite{stefan2011
 
 \section{Further Work and Conclusion}
 
-In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the two-point security semiring $\{\public\sqsubseteq\secret\}$, our system statically tracks data labels at the type level. And with typing rules that enforcing the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
+In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the two-point security semiring $\{\secret\sqsubseteq\public\}$, our system statically tracks data labels at the type level. And with typing rules that enforcing the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
 
 Despite these positive results, \textsc{FlowSTLC} in its current form is an \emph{idealized model} with clear limitations. For one, the core calculus is deliberately small and omits many practical language features. It has only base types and functions (no records, no algebraic data types, no recursive types, etc.), and it does not include polymorphism or dependent typing. As observed in prior work, static IFC models with minimal features have historically been considered "too limited or too restrictive to be used in practice" \cite{myers1999jflow}. Thus, our model inherits this limitation of expressiveness. Second, \textsc{FlowSTLC} exists only as a theoretical calculus and has not been integrated into a full-blown programming language. We consider that bridging this gap is a non-trivial challenge. For example, a recent survey noted that even in a rich language like Rust, implementing a sound IFC system requires "building an ad-hoc effect tracking system using bleeding-edge features of the Rust compiler". Finally, we have not evaluated performance or conducted real-world case studies. There are no benchmarks on typing or runtime costs, nor have we applied \text{FlowSTLC} to any non-trivial programs. In contrast, systems like JFlow and Cocoon \cite{lamba2024cocoon} have shown that static IFC checking can incur negligible overhead. Without such evaluation, the practical impact of \textsc{FlowSTLC} remains speculative.
 
@@ -172,10 +314,10 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 \subsubsection{Security Level Semiring}
 
 \begin{definition}[Security Level Semiring]
-The security level semiring is a two-point lattice of security levels $\{\public\sqsubseteq\secret\}$ with 
+The security level semiring is a two-point lattice of security levels $\{\secret\sqsubseteq\public\}$ with 
 \begin{itemize}
-	\item $0=\secret$
-	\item $1=\public$
+	\item $0=\public$
+	\item $1=\secret$
 	\item Addition as the meet: $r+s=r\sqcap s$
 	\item Multiplication as the join: $r\cdot s=r\sqcup s$
 \end{itemize}
@@ -183,6 +325,7 @@ The security level semiring is a two-point lattice of security levels $\{\public
 See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a semiring.
 
 \subsubsection{Auxiliary Definitions}
+\label{def-concat}
 \begin{definition}[Context Concatenation]
     $$
     \begin{aligned}
@@ -194,7 +337,7 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
     \end{aligned}
     $$
 \end{definition}
-
+\label{def-mul}
 \begin{definition}[Context Scalar Multiplication]
     $$
     \begin{aligned}
@@ -234,7 +377,7 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \begin{prooftree}
     \AXC{$\Gamma,x:T_1\vdash t:T_2$}
     \RightLabel{\textsc{T-Der}}
-    \UIC{$\Gamma,x:[T_1]_\public\vdash t:T_2$}
+    \UIC{$\Gamma,x:[T_1]_\secret\vdash t:T_2$}
 \end{prooftree}
 
 \begin{prooftree}
@@ -305,11 +448,13 @@ $$
 		This is also trivial since meet is commutative in a lattice.
 		\item \textbf{Additive identity}: $a+0=a$ for all $a$
 		
-		Since $0=\secret$ and $\public\sqsubseteq\secret$, we have
+		Since $0=\public$ and $\secret\sqsubseteq\public$, we have
 		\begin{equation}
 			\begin{aligned}
-				\public\sqcap\secret&=\public\\
-				\secret\sqcap\secret&=\secret
+				\public\sqcap\secret&=\secret\\
+				\secret\sqcap\public&=\secret\\
+				\secret\sqcap\secret&=\secret\\
+				\public\sqcap\public&=\public				
 			\end{aligned}
 		\end{equation}
 		\item \textbf{Associativity of multiplication}: $(a\cdot b)\cdot c=a\cdot (b\cdot c)$
@@ -321,22 +466,23 @@ $$
 		Since the lattice is a chain (and thus distributive), this holds.
 		\item \textbf{Multiplicative identity}: $1\cdot a=a\cdot 1=a$ for all $a$
 		
-		Since $1=\public$ and $\public=\secret$, we have
+		Since $1=\secret$ and $\secret\sqsubseteq\public$, we have
 		\begin{equation}
 			\begin{aligned}
 				\public\sqcup\public&=\public\\
-				\public\sqcup\secret&=\secret\\
-				\secret\sqcup\public&=\secret
+				\public\sqcup\secret&=\public\\
+				\secret\sqcup\public&=\public\\
+				\secret\sqcup\secret&=\secret
 			\end{aligned}
 		\end{equation}
 		\item \textbf{Multiplication by 0 annihilates}: $0\cdot a=a\cdot 0=0$ for all $a$
 		
-		Since $0=\secret$ and $\public\sqsubseteq\secret$, we have
+		Since $0=\public$ and $\secret\sqsubseteq\public$, we have
 		\begin{equation}
 			\begin{aligned}
-				\secret\sqcup\public&=\secret\\
-				\secret\sqcup\secret&=\secret\\
-				\public\sqcup\secret&=\secret
+				\public\sqcup\public&=\public\\
+				\public\sqcup\secret&=\public\\
+				\secret\sqcup\public&=\public
 			\end{aligned}
 		\end{equation}
 	\end{itemize}
