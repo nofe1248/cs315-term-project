@@ -1,4 +1,5 @@
 import Flowstlc.Basics
+import Flowstlc.SecurityLevel
 
 namespace Trm
 
@@ -13,6 +14,19 @@ def opening (k : ℕ) (u : Trm) : Trm → Trm
 | fvar x => fvar x
 | abs T t => abs T (opening (k + 1) u t)
 | app t1 t2 => app (opening k u t1) (opening k u t2)
+| promote t => promote (opening k u t)
+| letg y t1 t2 =>
+  let t1' := opening k u t1
+  match u with
+  | Trm.fvar x =>
+      if y = x then
+        -- When opening with a free variable that matches the let-binder,
+        -- occurrences of that variable in t2 are bound; don't open t2.
+        letg y t1' t2
+      else
+        letg y t1' (opening k u t2)
+  | _ =>
+      letg y t1' (opening k u t2)
 
 notation " {" k " ~> " u "} " t => opening k u t
 
@@ -44,6 +58,66 @@ lemma open_var_fv (t u : Trm) :
     refine Finset.union_subset_union_right ?_
     rw [Finset.union_comm]
     simp
+  case promote t ht =>
+    simp [opening, fv]
+    exact (fun k => ht k)
+  case letg x t1 t2 ht1 ht2 =>
+    intro k
+    -- Analyze on u to align with opening's letg branch and control fv u
+    cases u with
+    | fvar y =>
+        by_cases hxy : x = y
+        · -- binder matches opened free var: t2 is not opened
+          simp only [opening, fv, hxy]
+          intro a ha
+          rcases Finset.mem_union.mp ha with ha1 | ha2
+          · -- a ∈ fv (opening k ($ y) t1)
+            have ht1k_subset : fv (opening k ($ y) t1) ⊆ fv t1 ∪ {y} := by
+              simpa [opening, fv]
+                using (ht1 k)
+            have ht1k : a ∈ fv t1 ∪ {y} := ht1k_subset ha1
+            rcases Finset.mem_union.mp ht1k with h1 | h1
+            · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl h1)))
+            · exact Finset.mem_union.mpr (Or.inr h1)
+          · -- a ∈ (fv t2).erase x
+            exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inr ha2)))
+        · -- binder differs: both t1 and t2 are opened
+          simp only [opening, fv, hxy]
+          intro a ha
+          rcases Finset.mem_union.mp ha with ha1 | ha2
+          · -- from t1
+            have ht1k_subset : fv (opening k ($ y) t1) ⊆ fv t1 ∪ {y} := by
+              simpa [opening, fv]
+                using (ht1 k)
+            have ht1k : a ∈ fv t1 ∪ {y} := ht1k_subset ha1
+            rcases Finset.mem_union.mp ht1k with h1 | h1
+            · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl h1)))
+            · exact Finset.mem_union.mpr (Or.inr h1)
+          · -- from t2 with erase info
+            rcases Finset.mem_erase.mp ha2 with ⟨hane, ha2'⟩
+            have ht2k_subset : fv (opening k ($ y) t2) ⊆ fv t2 ∪ {y} := by
+              simpa [opening, fv]
+                using (ht2 k)
+            have ht2k : a ∈ fv t2 ∪ {y} := ht2k_subset ha2'
+            rcases Finset.mem_union.mp ht2k with h2 | h2
+            · -- a ∈ fv t2 and a ≠ x ⇒ a ∈ (fv t2).erase x
+              have h2' : a ∈ (fv t2).erase x := Finset.mem_erase.mpr ⟨hane, h2⟩
+              exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inr h2')))
+            · exact Finset.mem_union.mpr (Or.inr h2)
+    | _ =>
+        simp only [opening, fv]
+        intro a ha
+        rcases Finset.mem_union.mp ha with ha1 | ha2
+        · have hsubset := ht1 k ha1
+          rcases Finset.mem_union.mp hsubset with h1 | h1
+          · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl h1)))
+          · exact Finset.mem_union.mpr (Or.inr h1)
+        · rcases Finset.mem_erase.mp ha2 with ⟨hane, ha2'⟩
+          have hsubset := ht2 k ha2'
+          rcases Finset.mem_union.mp hsubset with h2 | h2
+          · have h2' : a ∈ (fv t2).erase x := Finset.mem_erase.mpr ⟨hane, h2⟩
+            exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inr h2')))
+          · exact Finset.mem_union.mpr (Or.inr h2)
 
 lemma opening_lc_lemma (t u v : Trm) :
     (i j : ℕ) → i ≠ j
@@ -81,6 +155,92 @@ lemma opening_lc_lemma (t u v : Trm) :
       have ih₁' := ih₁ i j hij h₁
       have ih₂' := ih₂ i j hij h₂
       exact congrArg₂ Trm.app ih₁' ih₂'
+  | promote t ih =>
+      intro i j hij h
+      simp [opening] at h
+      have ih' := ih i j hij h
+      exact congrArg Trm.promote ih'
+  | letg x t1 t2 ih1 ih2 =>
+      intro i j hij h
+      simp [opening] at h
+      cases u with
+      | fvar y =>
+          by_cases hxy : x = y
+          · -- binder matches opened free var: t2 is not opened
+            simp [hxy] at h
+            cases v with
+            | fvar z =>
+                simp at h
+                by_cases hyz : y = z
+                · simp [hyz] at h
+                  simp [hxy, hyz]
+                  rw [← hyz] at h ih1 ⊢
+                  have h1 := ih1 i j hij h
+                  exact h1
+                · simp [hyz] at h
+                  simp [hxy, hyz]
+                  have h1 := ih1 i j hij h.left
+                  exact ⟨h1, h.right⟩
+            | _ =>
+                simp at h
+                simp [hxy]
+                have h1 := ih1 i j hij h.left
+                exact ⟨h1, h.right⟩
+          · -- binder differs: both t1 and t2 are opened
+            simp [hxy] at h
+            cases v with
+            | fvar z =>
+                simp at h
+                by_cases hyz : y = z
+                · simp [hyz] at h
+                  have hxz : x ≠ z := by
+                    rw [← hyz]
+                    exact hxy
+                  simp [hxz] at h ⊢
+                  rw [hyz] at ih1 ih2
+                  have h1 := ih1 i j hij h.left
+                  have h2 := ih2 i j hij h.right
+                  exact ⟨h1, h2⟩
+                · by_cases hxz : x = z
+                  · simp [hxz] at h
+                    simp [hxz]
+                    rw [← hxz] at ih1 ih2
+                    rw [← hxz] at h
+                    have h1 := ih1 i j hij h
+                    rw [← hxz]
+                    exact h1
+                  · simp [hxz] at h
+                    simp [hxz]
+                    have h1 := ih1 i j hij h.left
+                    have h2 := ih2 i j hij h.right
+                    exact ⟨h1, h2⟩
+            | _ =>
+                simp at h
+                simp
+                have h1 := ih1 i j hij h.left
+                have h2 := ih2 i j hij h.right
+                exact ⟨h1, h2⟩
+      | _ =>
+          -- u is not a free variable; both t1 and t2 are opened by the inner opening
+          simp [opening] at h
+          cases v with
+          | fvar z =>
+              by_cases hxz : x = z
+              · simp [hxz] at h
+                simp [opening, hxz]
+                have h1 := ih1 i j hij h
+                exact h1
+              · simp [hxz] at h
+                simp [opening, hxz]
+                have h1 := ih1 i j hij h.left
+                have h2 := ih2 i j hij h.right
+                exact ⟨h1, h2⟩
+          | _ =>
+              simp at h
+              simp
+              have h1 := ih1 i j hij h.left
+              have h2 := ih2 i j hij h.right
+              exact ⟨h1, h2⟩
 
 ----------------------------------------------------------------------
 @[simp]
@@ -89,6 +249,15 @@ def closing (k x : ℕ) : Trm → Trm
 | fvar i => if x = i then (bvar k) else (fvar i)
 | abs T t => abs T (closing (k + 1) x t)
 | app t1 t2 => app (closing k x t1) (closing k x t2)
+| promote t => promote (closing k x t)
+| letg y t1 t2 =>
+  let t1' := closing k x t1
+  if y = x then
+    -- When the let-binder matches x, occurrences of $x in t2 are bound;
+    -- closing should not capture them, so we skip closing in t2.
+    letg y t1' t2
+  else
+    letg y t1' (closing k x t2)
 
 notation " { " k " <~ " x " } " t => closing k x t
 
@@ -117,6 +286,34 @@ lemma close_var_fv (t : Trm) (x : ℕ) :
     simp [closing, fv]
     simp [hu1 k, hu2 k]
     exact Eq.symm (Finset.union_sdiff_distrib (fv u1) (fv u2) {x})
+  case promote u hu =>
+    intro k
+    simp [closing, fv]
+    exact (hu k)
+  case letg y u1 u2 hu1 hu2 =>
+    intro k
+    simp [closing, fv]
+    have h1 : fv (closing k x u1) = fv u1 \ {x} := hu1 k
+    by_cases hy : y = x
+    · -- when the let-binder matches x, closing does not affect t2
+      simp [hy]
+      rw [fv]
+      simp [Finset.union_sdiff_distrib]
+      have h1 := hu1 k
+      have h2 := hu2 k
+      rw [h1]
+      simp [Finset.erase_eq]
+    · -- when the let-binder does not match x, closing affects t2
+      have h2 : fv (closing k x u2) = fv u2 \ {x} := hu2 k
+      simp [hy]
+      rw [fv]
+      simp [Finset.union_sdiff_distrib]
+      rw [h1, h2]
+      simp [Finset.erase_eq]
+      ext a
+      simp [Finset.mem_sdiff, Finset.mem_union, Finset.mem_singleton,
+        and_left_comm, and_comm]
+
 
 ----------------------------------------------------------------------
 --Locally closed terms
@@ -125,6 +322,8 @@ inductive lc : Trm → Prop
 | lc_abs : ∀ t : Trm, ∀ T : Typ, ∀ L : Finset ℕ,
    (∀ x : ℕ, x ∉ L → lc (open₀ t ($ x))) → lc (abs T t)
 | lc_app : ∀ t1 t2 : Trm, lc t1 → lc t2 → lc (app t1 t2)
+| lc_promote : ∀ t : Trm, lc t → lc (promote t)
+| lc_letg : ∀ y : ℕ, ∀ t1 t2 : Trm, lc t1 → lc t2 → lc (letg y t1 t2)
 
 open lc
 
@@ -171,6 +370,27 @@ lemma close_open (x : ℕ) (t : Trm) :
     simp [opening, closing]
     simp [fv] at hx
     exact (fun p => ⟨hu1 hx.1 p, hu2 hx.2 p⟩)
+  case promote u hu =>
+    simp [opening, closing]
+    exact (fun p => hu hx p)
+  case letg y u1 u2 hu1 hu2 =>
+    simp [opening]
+    simp [fv] at hx
+    by_cases hxy : x = y
+    · -- binder matches opened free var: t2 is not opened
+      simp only [hxy]
+      intro j
+      have h1 := hu1 hx.left j
+      simp
+      rw [← hxy]
+      exact h1
+    · -- binder differs: both t1 and t2 are opened
+      intro j
+      have h1 := hu1 hx.left j
+      have h2 := hu2 (hx.right hxy) j
+      have hyx : y ≠ x := fun p => hxy p.symm
+      simp [closing, hyx, h1, h2]
+
 
 --special case of close_open at j=0
 lemma close_open_var (x : ℕ) (t : Trm) :
@@ -236,6 +456,30 @@ lemma open_close_lemma (x y z : ℕ) (t : Trm) : x ≠ y → y ∉ fv t
     simp only [closing, opening, app.injEq]
     simp [fv] at hy
     exact ⟨hu1 hy.1 i j neqij, hu2 hy.2 i j neqij⟩
+  case promote u hu =>
+    intro i j neqij
+    simp only [closing, opening, promote.injEq]
+    exact hu hy i j neqij
+  case letg a u1 u2 hu1 hu2 =>
+    intro i j neqij
+    simp [opening]
+    simp [fv] at hy
+    by_cases hax : x = a
+    · have hay : y ≠ a := by
+        rw [← hax]
+        simpa [eq_comm] using neqxy
+      simp [hax]
+      by_cases haz : z = a
+      · simp [haz, hay, eq_comm]
+        have hu1' := hu1 hy.left i j neqij
+        simp [haz, hax] at hu1'
+        exact hu1'
+      · simp [haz, hay, eq_comm]
+        have hu1' := hu1 hy.left i j neqij
+        have hu2' := hu2 (hy.right hay) i j neqij
+        simp [hax] at hu1' hu2'
+        sorry
+    · sorry
 
 lemma open_close (x : ℕ) (t : Trm) :
     lc t → (k : ℕ) → opening k ($ x) (closing k x t) = t := by
@@ -269,6 +513,16 @@ lemma open_close (x : ℕ) (t : Trm) :
     intro j
     simp [opening, closing]
     exact ⟨hu1 j, hu2 j⟩
+  case lc_promote t ht =>
+    intro j
+    simp [closing, opening]
+    exact ht j
+  case lc_letg u t1 t2 ht1 ht2 =>
+    intro j
+    simp [closing]
+    have ht1' := ht1 j
+    have ht2' := ht2 j
+    sorry
 
 --special case of open_close at j=0
 lemma open_close_var (x : ℕ) (t : Trm) :
@@ -307,6 +561,14 @@ lemma opening_lc (t u : Trm) : lc t → (k : ℕ) → (t = {k ~> u} t) := by
     intro i
     simp [opening]
     exact ⟨hu1 i, hu2 i⟩
+  case lc_promote t ht =>
+    intro i
+    simp [opening]
+    exact ht i
+  case lc_letg y t1 t2 _ _ ht1 ht2 =>
+    intro i
+    simp [opening]
+    sorry
 
 lemma open₀_lc (t u : Trm) : lc t → (t = open₀ t u) := by
   intro lce
@@ -344,6 +606,14 @@ lemma subst_open_rec (t1 t2 u : Trm) : (i j : ℕ) → lc u
    intro i j lcu
    simp [opening, subst]
    exact ⟨hu1 i j lcu, hu2 i j lcu⟩
+  case promote v hv =>
+   intro i j lcu
+   simp [opening, subst]
+   exact hv i j lcu
+  case letg y v1 v2 hv1 hv2 =>
+   intro i j lcu
+   simp [opening, subst]
+   sorry
 
 --The lemma above is most often used with k = 0 and e2 as some fresh variable.
 --Therefore, it simplifies matters to define the following useful corollary.
@@ -395,6 +665,17 @@ lemma subst_lc (t u : Trm) : (x : ℕ) → lc t → lc u → lc ([x // u] t) := 
   case lc_app t1 t2 lct1 lct2 ht1 ht2 =>
     dsimp [subst]
     apply (lc_app ( [ x // u ] t1) ( [ x // u ] t2) ht1 ht2)
+  case lc_promote v lcv hv =>
+    dsimp [subst]
+    exact lc.lc_promote ([x // u] v) hv
+  case lc_letg y t1 t2 lct1 lct2 ht1 ht2 =>
+    dsimp [subst]
+    by_cases hxy : y = x
+    · simp [hxy]
+      rw [← hxy] at ⊢ ht1
+      exact lc.lc_letg y ([y // u] t1) t2 ht1 lct2
+    · simp [hxy]
+      exact lc.lc_letg y ([x // u] t1) ([x // u] t2) ht1 ht2
 
 lemma open_var_body : ∀ x t, body t → lc (open₀ t ($ x)) := by
   intro x t bt
@@ -465,5 +746,39 @@ lemma open_close_subst t x y :
     intro k
     simp
     exact ⟨f1 k, f2 k⟩
+  case lc_promote s hs =>
+    intro k
+    simp [opening, closing, subst]
+    exact hs k
+  case lc_letg u u1 u2 h1 h2 f1 f2 =>
+    intro k
+    simp [closing, subst]
+    by_cases hux : u = x
+    · -- binder matches x: t2 is not closed
+      simp [hux]
+      by_cases hxy : x = y
+      · -- y = x
+        simp [hxy]
+        have f1' := f1 k
+        rw [hxy] at f1'
+        exact f1'
+      · -- y ≠ x
+        simp [hxy]
+        have f1' := f1 k
+        have f2' := f2 k
+        sorry
+    · -- binder differs: both t1 and t2 are closed
+      by_cases hxy : x = y
+      · -- y = x
+        have huy : u ≠ y := by
+          rw [← hxy]
+          exact hux
+        simp [hxy, huy]
+        have f1' := f1 k
+        have f2' := f2 k
+        rw [hxy] at f1' f2'
+        exact ⟨f1', f2'⟩
+      · -- y ≠ x
+        sorry
 
 end Trm

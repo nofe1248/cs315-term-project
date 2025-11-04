@@ -27,7 +27,7 @@ notation "$" x => fvar x
 notation "λ " T "," t => abs T t
 notation t1 " @ " t2 => app t1 t2
 notation "[" t "]" => promote t
-notation "let" "[" x "]" "=" t1 " in " t2 => letg x t1 t2
+notation "let " "[" x "]" " = " t1 " in " t2 => letg x t1 t2
 
 -- Defining free variable substitution by induction on terms --
 @[simp]
