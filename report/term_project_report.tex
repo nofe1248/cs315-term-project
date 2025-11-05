@@ -15,11 +15,25 @@
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \newcommand\lam[2]{\lambda #1.#2}
 \newcommand\unp[3]{\textbf{let }[#1]=#2\textbf{ in }#3}
+\newcommand\une[2]{\textbf{let }\unt=#1\textbf{ in }#2}
 \newcommand\gradedt[2]{\square_#1 #2}
 \newcommand\public{\texttt{Public}}
 \newcommand\secret{\texttt{Secret}}
 \newcommand\irrele{\texttt{Irrelevant}}
 \newcommand\secure{\mathbb{S}}
+\newcommand\true{\texttt{true}}
+\newcommand\false{\texttt{false}}
+\newcommand\bool{\texttt{Bool}}
+\newcommand\nat{\texttt{Nat}}
+\newcommand\suc[1]{\texttt{succ}\; #1}
+\newcommand\prd[1]{\texttt{pred}\; #1}
+\newcommand\iszero[1]{\texttt{iszero}\; #1}
+\newcommand\unt{\texttt{unit}}
+\newcommand\untt{\texttt{Unit}}
+\newcommand\cond[3]{\textbf{if }#1\textbf{ then }#2\textbf{ else }#3}
+\newcommand\srzero{\textbf{0}}
+\newcommand\srone{\textbf{1}}
+\newcommand\reduce{\rightsquigarrow}
 
 \newtheorem{definition}{Definition}
 \newtheorem{theorem}{Theorem}
@@ -62,9 +76,19 @@ Computer security, information flow, noninterference, security-type systems
 
 Modern software often handles sensitive data that must remain confidential. The \emph{informational flow control} (or IFC) aims to ensure that high-security inputs of the program do not improperly influence low-security outputs. For example, private user information like passwords should never be leaked to public logs. Formally, the security policy of \emph{noninterference} requires that variations in high-security inputs have no observable effect on low-security outputs. Intuitively, this means that changing a secret value should never cause any change in what an outside observer at low level sees. Violating the IFC principle can lead to information leak, so enforcing noninterference is critical for system security.
 
-Type systems \cite{sabelfeld2003language} have been proved effective at enforcing noninterference: they associate each value with aa security label and constrain operations so that a well-typed program is guaranteed not to leak high-security information. For example, a simple rule is that the result of a computation must have the hightest security label of any input used in its computation. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
+\emph{Type systems} \cite{sabelfeld2003language} \cite{abadi1999core} have been proved effective at enforcing noninterference: they associate each value with a \emph{security label} and constrain operations so that a well-typed program is guaranteed not to leak high-security information. For example, consider the following function:
 
-However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\irrele\sqsubseteq\secret\sqsubseteq\public\}$. This system will allow us precisely control how the values interact as a type of coeffects, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
+\begin{equation}
+	\text{foo}=\lam{x:\nat}{\lam{y:\nat}{x+y}}
+\end{equation}
+
+Then such coeffect systems might allow the function to be typed as
+\begin{equation}
+	\text{foo}:\nat^\secret\to\nat^\public\to\nat^\secret
+\end{equation}
+where the first parameter is marked as a high-security input, and the second parameter is marked as a low-security input. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
+
+However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\irrele\sqsubseteq\secret\sqsubseteq\public\}$. This system will allow us precisely control how the values interact as a type of \emph{coeffects} \cite{petricek2013coeffects} \cite{petricek2014coeffects}, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
 
 \section{\textsc{FlowSTLC}: The Core Calculus}
 \subsection{Syntax}
@@ -322,23 +346,40 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 		| $\lam{x}{t}$ : \textit{abstraction}
 		| $[t]$ : \textit{packing}
 		| $\unp{x}{t\colon T}{t}$ : \textit{unpacking}
+		| $\true$ : \textit{true constant}
+		| $\false$ : \textit{false constant}
+		| $\cond{t}{t}{t}$ : \textit{conditional}
+		| $n$ : \textit{natural number}
+		| $\iszero{t}$ : \textit{zero test}
+		| $\unt$ : \textit{unit}
+		| $\une{t}{t}$ : \textit{unit elimination}
+		;;
+		$n$ : \textsf{Number} ::=
+		| $0$ : \textit{zero constant}
+		| $\suc{n}$ : \textit{successor}
+		| $\prd{n}$ : \textit{predecessor}
 		;;
 		$T$ : \textsf{Type} ::=
-		| $T\to T$ : \textit{function type}
+		| \untt : \textit{unit type}
+		| \nat : \textit{natural number type}
+		| \bool : \textit{boolean type}
+		| $T\to^\ell T$ : \textit{function type}
 		| $\gradedt{r}{T}$ : \textit{graded modality}
 		;;
 		$v$ : \textsf{Value} ::=
 		| $\lam{x\colon T}{t}$ : \textit{abstraction value}
+		| $n$ : \textit{natural number value}
+		| $\true$ : \textit{true value}
+		| $\false$ : \textit{false value}
+		| $\unt$ : \textit{unit value}
 		;;
 		$\Gamma$ : \textsf{Context} ::=
 		| $\emptyset$ : \textit{empty context}
-        | $\Gamma,x\colon T$ : \textit{assumption}
 		| $\Gamma,x\colon[T]_r$ : \textit{graded assumption}
 		;;
 		$\ell$ : \textsf{Security} ::=
-		| \secret
-		| \public
-		| \irrele
+		| \secret : \textit{high-security label}
+		| \public : \textit{low-security label}
 		;;
 	\end{bnf}
 \end{center}
@@ -346,12 +387,12 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 \subsubsection{Security Level Semiring}
 
 \begin{definition}[Security Level Semiring]
-The security level semiring $\mathbb{S}$ is a three-point lattice of security levels $\{\irrele\sqsubseteq\secret\sqsubseteq\public\}$ with 
+The security level semiring $\mathbb{S}$ is a two-point lattice of security levels $\secure=\{\public\sqsubseteq\secret\}$ with 
 \begin{itemize}
-	\item $0=\irrele$
-	\item $1=\secret$
-	\item Addition as the join: $r+s=r\cup s$
-	\item Multiplication as the join plus a special case: If $r$ or $s$ is $\irrele$, then $r\cdot s=\irrele$, otherwise $r\cdot s=r\sqcup s$
+	\item $\srzero=\secret$
+	\item $\srone=\public$
+	\item Addition as the meet: $r+s=r\sqcap s$
+	\item Multiplication as the join $r\cdot s=r\sqcup s$
 \end{itemize}
 \end{definition}
 See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a semiring.
@@ -363,8 +404,6 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
     \begin{aligned}
         \emptyset+\Gamma&=\Gamma\\
         \Gamma+\emptyset&=\Gamma\\
-        (\Gamma,x:T)+\Gamma'&=(\Gamma+\Gamma'),x:T\text{ iff }x\notin dom(\Gamma')\\
-        \Gamma+(\Gamma',x:T)&=(\Gamma+\Gamma'),x:T\text{ iff }x\notin dom(\Gamma')\\
         (\Gamma,x:[T]_r)+(\Gamma',x:[T]_s)&=(\Gamma+\Gamma'),x:[T]_{r+s}
     \end{aligned}
     $$
@@ -382,42 +421,29 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \subsubsection{Typing Rules}
 
 \begin{prooftree}
-	\AXC{$x:T\in\Gamma$}
+	\AXC{}
 	\RightLabel{\textsc{T-Var}}
-	\UIC{$\Gamma\vdash x:T$}
+	\UIC{$\srzero\cdot\Gamma,x:[T]_\public\vdash x:T$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$\Gamma,x:T_1\vdash t:T_2$}
+	\AXC{$\Gamma,x:[T_1]_\ell\vdash t:T_2$}
 	\RightLabel{\textsc{T-Abs}}
-	\UIC{$\Gamma\vdash\lam{x:T_1}{t}:T_1\to T_2$}
+	\UIC{$\Gamma\vdash\lam{x:T_1}{t}:T_1\to^\ell T_2$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$\Gamma_1\vdash t_1:T_{11}\to T_{12}$}
+	\AXC{$\Gamma_1\vdash t_1:T_{11}\to^\ell T_{12}$}
 	\AXC{$\Gamma_2\vdash t_2:T_{11}$}
 	\RightLabel{\textsc{T-App}}
-	\BIC{$\Gamma_1+\Gamma_2\vdash t_1\; t_2:T_{12}$}
+	\BIC{$\Gamma_1+\ell\cdot\Gamma_2\vdash t_1\; t_2:T_{12}$}
 \end{prooftree}
 
 \begin{prooftree}
 	\AXC{$\Gamma\vdash t:T$}
-	\RightLabel{\textsc{T-Weak}}
-	\UIC{$\Gamma,\Gamma'\vdash t:T$}
-\end{prooftree}
-
-\begin{prooftree}
-    \AXC{$\Gamma,x:T_1\vdash t:T_2$}
-    \RightLabel{\textsc{T-Der}}
-    \UIC{$\Gamma,x:[T_1]_\secret\vdash t:T_2$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$[\Gamma]\vdash t:T$}
 	\RightLabel{\textsc{T-Pro}}
-	\UIC{$\ell\cdot[\Gamma]\vdash[t]:\gradedt{\ell}{T}$}
+	\UIC{$\ell\cdot\Gamma\vdash[t]:\gradedt{\ell}{T}$}
 \end{prooftree}
-where $[\Gamma]$ denotes a context containing only graded assumptions.
 
 \begin{prooftree}
 	\AXC{$\Gamma_1\vdash t_1:\gradedt{\ell}{T_1}$}
@@ -428,44 +454,179 @@ where $[\Gamma]$ denotes a context containing only graded assumptions.
 
 \begin{prooftree}
 	\AXC{$\Gamma,x:[T_2]_{\ell_1}\vdash t:T_1$}
-	\AXC{$\ell_1\sqsubseteq\ell_2$}
+	\AXC{$\ell_2\sqsubseteq\ell_1$}
 	\RightLabel{\textsc{T-Approx}}
 	\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-True}}
+	\UIC{$\srzero\cdot\Gamma\vdash\true:\bool$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-False}}
+	\UIC{$\srzero\cdot\Gamma\vdash\false:\bool$}
+\end{prooftree}
+
+\begin{prooftree}
+	\def\defaultHypSeparation{\hskip .03in}
+	\AXC{$\Gamma_1\vdash t_1:\bool$}
+	\AXC{$\Gamma_2\vdash t_2:T$}
+	\AXC{$\Gamma_2\vdash t_3:T$}
+	\AXC{$\ell\sqsubseteq\srone$}
+	\RightLabel{\textsc{T-Cond}}
+	\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-Zero}}
+	\UIC{$\srzero\cdot\Gamma\vdash0:\nat$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:\nat$}
+	\RightLabel{\textsc{T-Succ}}
+	\UIC{$\Gamma\vdash\suc t:\nat$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:\nat$}
+	\RightLabel{\textsc{T-Pred}}
+	\UIC{$\Gamma\vdash\prd t:\nat$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:\nat$}
+	\RightLabel{\textsc{T-IsZero}}
+	\UIC{$\Gamma\vdash\iszero t:\bool$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-Unit}}
+	\UIC{$\srzero\cdot\Gamma\vdash\unt:\untt$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma_1\vdash t_1:\untt$}
+	\AXC{$\Gamma_2\vdash t_2:T$}
+	\RightLabel{\textsc{T-UnitElim}}
+	\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
 \end{prooftree}
 
 \subsubsection{Evaluation Rules}
 
 \begin{prooftree}
-	\AXC{$t_1\to t_1'$}
+	\AXC{$t_1\reduce t_1'$}
 	\RightLabel{\textsc{E-App1}}
-	\UIC{$t_1\; t_2\to t_1'\; t_2$}
+	\UIC{$t_1\; t_2\reduce t_1'\; t_2$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$t_2\to t_2'$}
+	\AXC{$t_2\reduce t_2'$}
 	\RightLabel{\textsc{E-App2}}
-	\UIC{$v_1\; t_2\to v_1\; t_2'$}
+	\UIC{$v_1\; t_2\reduce v_1\; t_2'$}
 \end{prooftree}
 
-$$
-(\lam{x:T}{t})\; v\to [x\mapsto v]t\quad\textsc{E-AppAbs}
-$$
+\begin{prooftree}
+\AXC{}
+\RightLabel{\textsc{E-AppAbs}}
+\UIC{$(\lam{x:T}{t})\; v\reduce [x\mapsto v]t$}
+\end{prooftree}
 
 \begin{prooftree}
-	\AXC{$t\to t'$}
+	\AXC{$t\reduce t'$}
 	\RightLabel{\textsc{E-Pro}}
-	\UIC{$[t]\to[t']$}
+	\UIC{$[t]\reduce[t']$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$t_1\to t_1'$}
+	\AXC{$t_1\reduce t_1'$}
 	\RightLabel{\textsc{E-Let-Eval}}
-	\UIC{$\unp{x}{t_1}{t_2}\to\unp{x}{t_1'}{t_2}$}
+	\UIC{$\unp{x}{t_1}{t_2}\reduce\unp{x}{t_1'}{t_2}$}
 \end{prooftree}
 
-$$
-\unp{x}{v}{t}\to [x\mapsto v]t\quad\textsc{E-Let-Unbox}
-$$
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Let-Unbox}}
+	\UIC{$\unp{x}{[v]}{t}\reduce [x\mapsto v]t$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t_1\reduce t_1'$}
+	\RightLabel{\textsc{E-If-Eval}}
+	\UIC{$\cond{t_1}{t_2}{t_3}\reduce\cond{t_1'}{t_2}{t_3}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-If-True}}
+	\UIC{$\cond{\true}{t_2}{t_3}\reduce t_2$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-If-False}}
+	\UIC{$\cond{\false}{t_2}{t_3}\reduce t_3$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t_1\reduce t_1'$}
+	\RightLabel{\textsc{E-Unit-Elim-Eval}}
+	\UIC{$\une{t_1}{t_2}\reduce\une{t_1'}{t_2}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Unit-Elim}}
+	\UIC{$\une{\unt}{t}\reduce t$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t\reduce t'$}
+	\RightLabel{\textsc{E-Succ}}
+	\UIC{$\suc{t}\reduce\suc{t'}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t\reduce t'$}
+	\RightLabel{\textsc{E-Pred}}
+	\UIC{$\prd{t}\reduce\prd{t'}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t\reduce t'$}
+	\RightLabel{\textsc{E-IsZero}}
+	\UIC{$\iszero{t}\reduce\iszero{t'}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Pred-Zero}}
+	\UIC{$\prd 0\reduce 0$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Pred-Succ}}
+	\UIC{$\prd{\suc t}\reduce t$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-IsZero-Zero}}
+	\UIC{$\iszero 0\reduce\true$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-IsZero-Succ}}
+	\UIC{$\iszero{\suc t}\reduce\false$}
+\end{prooftree}
 
 \subsection{Proofs}
 \subsubsection{Security Level Semiring}
@@ -474,42 +635,45 @@ $$
 	\begin{itemize}
 		\item \textbf{Associativity of addition}: $(a+b)+c=a+(b+c)$
 		
-		This is trivial since the semiring addition is join, and join is associative in a lattice.
+		This is trivial since the semiring addition is meet, and join is associative in a lattice.
 		\item \textbf{Commutativity of addition}: $a+b=b+a$
 		
-		This is also trivial since join is commutative in a lattice.
-		\item \textbf{Additive identity}: $a+0=a$ for all $a$
+		This is also trivial since meet is commutative in a lattice.
+		\item \textbf{Additive identity}: $a+\srzero=a$ for all $a$
 		
-		Since $0=\irrele$, and $\irrele$ be the minimum in $\secure$, we have
+		Since $0=\secret$, and $\secret$ be the maximum in $\secure$, we have
 		\begin{equation}
 			\begin{aligned}
-				\public\sqcup\irrele&=\public\\
-				\secret\sqcup\irrele&=\secret\\
-				\irrele\sqcup\irrele&=\irrele\\			
+				\secret\sqcap\secret&=\secret\\
+				\public\sqcap\secret&=\public\\	
 			\end{aligned}
 		\end{equation}
 		\item \textbf{Associativity of multiplication}: $(a\cdot b)\cdot c=a\cdot (b\cdot c)$
 		
-		This is trivial by the associativity of join operation and the absorption nature of $\irrele$.
+		This is trivial by the associativity of join operation.
 		
 		\item \textbf{Multiplication distributes over addition}: $a\cdot(b+c)=(a\cdot b)+(a\cdot c)$ and $(a+b)\cdot c=(a\cdot c)+(b\cdot c)$
 		
-		\begin{itemize}
-			\item If $a=\irrele$, then $a\cdot(b+c)=\irrele$ and $(a\cdot b)+(a\cdot c)=\irrele+\irrele$.
-			\item Otherwise the distributivity comes from the associativity of the join operation.
-		\end{itemize}
+		The distributivity trivially holds since $\secure$ is a two-point lattice.
 		
-		\item \textbf{Multiplicative identity}: Since $1=\secret$ and $\irrele\sqsubseteq\secret\sqsubseteq\public$, we have
+		\item \textbf{Multiplicative identity}: $a\cdot\srone=a$ for all $a$
+		
+		Since $1=\public$ and $\public\sqsubset\secret$, we have
+		\begin{equation}
+			\begin{aligned}
+				\public\sqcup\public&=\public\\
+				\public\sqcup\secret&=\secret\\
+			\end{aligned}
+		\end{equation}
+		\item \textbf{Multiplication by 0 annihilates}: $\srzero\cdot a=a\cdot\srzero=\srzero$ for all $a$
+		
+		Since $0=\secret$ and $\public\sqsubset\secret$, we have
 		\begin{equation}
 			\begin{aligned}
 				\secret\sqcup\secret&=\secret\\
-				\public\sqcup\secret&=\public\\
-				\irrele\sqcup\secret&=\irrele
+				\public\sqcup\secret&=\secret\\
 			\end{aligned}
 		\end{equation}
-		\item \textbf{Multiplication by 0 annihilates}: $0\cdot a=a\cdot 0=0$ for all $a$
-		
-		This trivially holds to the absorption nature of $\irrele$.
 	\end{itemize}
 	Thus the security level algebra is a semiring.
 \end{proof}
