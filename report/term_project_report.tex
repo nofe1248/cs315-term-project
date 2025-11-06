@@ -17,8 +17,8 @@
 \newcommand\unp[3]{\textbf{let }[#1]=#2\textbf{ in }#3}
 \newcommand\une[2]{\textbf{let }\unt=#1\textbf{ in }#2}
 \newcommand\gradedt[2]{\square_#1 #2}
-\newcommand\public{\texttt{Public}}
-\newcommand\secret{\texttt{Secret}}
+\newcommand\public{\texttt{Pub}}
+\newcommand\secret{\texttt{Sec}}
 \newcommand\irrele{\texttt{Irrelevant}}
 \newcommand\secure{\mathbb{S}}
 \newcommand\true{\texttt{true}}
@@ -28,7 +28,7 @@
 \newcommand\suc[1]{\texttt{succ}\; #1}
 \newcommand\prd[1]{\texttt{pred}\; #1}
 \newcommand\iszero[1]{\texttt{iszero}\; #1}
-\newcommand\unt{\texttt{unit}}
+\newcommand\unt{()}
 \newcommand\untt{\texttt{Unit}}
 \newcommand\cond[3]{\textbf{if }#1\textbf{ then }#2\textbf{ else }#3}
 \newcommand\srzero{\textbf{0}}
@@ -88,74 +88,63 @@ Then such coeffect systems might allow the function to be typed as
 \end{equation}
 where the first parameter is marked as a high-security input, and the second parameter is marked as a low-security input. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
 
-However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\irrele\sqsubseteq\secret\sqsubseteq\public\}$. This system will allow us precisely control how the values interact as a type of \emph{coeffects} \cite{petricek2013coeffects} \cite{petricek2014coeffects}, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
+However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\public\sqsubseteq\secret\}$, where $\public$ represents low-security information, and $\secret$ represents high-security information. This system will allow us precisely control how the values interact as a type of \emph{coeffects} \cite{petricek2013coeffects} \cite{petricek2014coeffects}, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
 
 \section{\textsc{FlowSTLC}: The Core Calculus}
 \subsection{Syntax}
 
-The \textsc{FlowSTLC} is a graded extension to the simply typed lambda-calculus resembling the Fuzz type system of Reed \emph{et al.} \cite{reeddistance}. It is also similar to coeffect calculi of Brunel \emph{et al.} \cite{brunel2014core} and Gaboardi \emph{et al.} \cite{gaboardi2016combining}.
+The \textsc{FlowSTLC} is a graded extension to the simply typed lambda-calculus resembling the Fuzz type system of Reed et al. \cite{reeddistance}. It is also similar to coeffect calculi of Brunel et al. \cite{brunel2014core} and Gaboardi et al. \cite{gaboardi2016combining}.
 
-The syntax of \textsc{FlowSTLC} is a straightforward extension of STLC with two additional constructs for introducing and eliminating the graded necessity type $\gradedt{\ell}{T}$:
+The syntax of \textsc{FlowSTLC} is a straightforward extension of STLC with two additional constructs for introducing and eliminating the graded necessity type $\gradedt{\ell}{T}$. We also add built-in boolean, natural numbers, and unit type to it:
 
 $$
 \begin{aligned}
-	\textsf{Term}\;t\;&::=\;x\;|\;t\; t\;|\;\lambda x.t\;|\;[t]\;|\;\textbf{let }[x]=t\textbf{ in }t\\
-	\textsf{Type}\;T\;&::=\;T\to T\;|\;\square_r T\\
+	\textsf{Term}\;t\;&::=&\;x\;|\;t\; t\;|\;\lambda x.t\;|\;[t]\;|\;\textbf{let }[x]=t\textbf{ in }t\\
+	&&\true\;|\;\false\;|\;\cond{t}{t}{t}\;|\; n\\
+	&&\iszero{t}\;|\;\unt\;|\;\une{t}{t}\\
+	\textsf{Type}\;T\;&::=&\;T\to^\ell T\;|\;\square_r T\;|\;\untt\;|\;\bool\;|\;\nat\\
 \end{aligned}
 $$
 
-The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\irrele\sqsubseteq\secret\sqsubseteq\public$.
+The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The function type $T\to^\ell T$ records how will the function use its argument by a grade $\ell$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\public\sqsubseteq\secret$. The built-in booleans, natural numbers, and unit types are easy and well-studied extensions, and we will omit the explanation of these constructs here.
 
 Typing judgements are of the regular form $\Gamma\vdash t:T$ with the typing contexts of the form:
 $$
-\textsf{Context}\;\Gamma\;::=\;\emptyset\;|\;\Gamma,x:T\;|\;\Gamma,x:[T]_\ell
+\textsf{Context}\;\Gamma\;::=\;\emptyset\;|\;\Gamma,x:[T]_\ell
 $$
 
-Contexts are either empty $\emptyset$, or can be extended with either a regular assumption $x:T$ or a \emph{graded assumption} $x:[T]_\ell$. The regular assumptions can be used exactly the same way as in STLC. For graded assumptions, their grades $\ell$ capture their substructural behavior by describing how can they be used in a term, in this case, the grade capture the security level of information. We will use $dom(\Gamma)$ to denote the variables assigned by context $\Gamma$.
+Contexts are either empty $\emptyset$, or can be extended with  a \emph{graded assumption} $x:[T]_\ell$. For graded assumptions, their grades $\ell$ capture their substructural behavior by describing how can they be used in a term, in this case, the grade capture the security level of information. We will use $dom(\Gamma)$ to denote the variables assigned by context $\Gamma$.
 
 \subsection{Typing}
 
-\textsc{FlowSTLC} has all three standard typing rules of STLC, plus a explicit weakening rule:
+\textsc{FlowSTLC} has all three standard typing rules of STLC:
 \begin{prooftree}
-	\AXC{$x:T\in\Gamma$}
+	\AXC{}
 	\RightLabel{\textsc{T-Var}}
-	\UIC{$\Gamma\vdash x:T$}
+	\UIC{$\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$\Gamma,x:T_1\vdash t:T_2$}
+	\AXC{$\Gamma,x:[T_1]_\ell\vdash t:T_2$}
 	\RightLabel{\textsc{T-Abs}}
-	\UIC{$\Gamma\vdash\lam{x:T_1}{t}:T_1\to T_2$}
+	\UIC{$\Gamma\vdash\lam{x:T_1}{t}:T_1\to^\ell T_2$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$\Gamma_1\vdash t_1:T_{11}\to T_{12}$}
+	\AXC{$\Gamma_1\vdash t_1:T_{11}\to^\ell T_{12}$}
 	\AXC{$\Gamma_2\vdash t_2:T_{11}$}
 	\RightLabel{\textsc{T-App}}
-	\BIC{$\Gamma_1+\Gamma_2\vdash t_1\; t_2:T_{12}$}
+	\BIC{$\Gamma_1+\ell\cdot\Gamma_2\vdash t_1\; t_2:T_{12}$}
 \end{prooftree}
 
+The exchange rule and weakening rule that allow permutation and expansion of contexts is implicit here, instead we enables the permutation by a permutation lemma (see \hyperref[lem-perm]{Permutation lemma}). The differences with the standard rules are that these rules integrate grades into the premises and conclusions. For example, the \textsc{T-Var} rule enforces that we only use $x$ by requiring all other assumptions have a $\secret$ grade. And the abstraction rule \textsc{T-Abs} records the usage of variable $x$ in function body by marking the function's type with the same grade of the assumption that assigns $x$. For the application rule \textsc{T-App}, the concatenation combines all graded assumptions by the semiring addition $+$ (for more information see the \hyperref[def-concat]{Appendix A.3}).
+
+The next three rules build the structure of the security label semiring:
 \begin{prooftree}
 	\AXC{$\Gamma\vdash t:T$}
-	\RightLabel{\textsc{T-Weak}}
-	\UIC{$\Gamma,\Gamma'\vdash t:T$}
-\end{prooftree}
-
-The exchange rule that allows permutation of contexts is implicit here, instead we enables the permutation by a permutation lemma (see \hyperref[lem-perm]{Permutation lemma}). The only difference with the standard rules is the application rule applies a \emph{context concatenation} $\Gamma_1+\Gamma_2$. The concatenation combines two contexts if they contain disjoint set of regular assumptions. Then the concatenation will combine all regular assumptions together and merge graded assumptions by the semiring addition $+$ (for more information see the \hyperref[def-concat]{Appendix}).
-
-The remaining rules build the structure of the security label semiring and connect the regular assumptions to the graded ones:
-\begin{prooftree}
-	\AXC{$\Gamma,x:T_1\vdash t:T_2$}
-	\RightLabel{\textsc{T-Der}}
-	\UIC{$\Gamma,x:[T_1]_\secret\vdash t:T_2$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$[\Gamma]\vdash t:T$}
 	\RightLabel{\textsc{T-Pro}}
-	\UIC{$\ell\cdot[\Gamma]\vdash[t]:\gradedt{\ell}{T}$}
+	\UIC{$\ell\cdot\Gamma\vdash[t]:\gradedt{\ell}{T}$}
 \end{prooftree}
-where $[\Gamma]$ denotes a context containing only graded assumptions.
 
 \begin{prooftree}
 	\AXC{$\Gamma_1\vdash t_1:\gradedt{\ell}{T_1}$}
@@ -166,12 +155,86 @@ where $[\Gamma]$ denotes a context containing only graded assumptions.
 
 \begin{prooftree}
 	\AXC{$\Gamma,x:[T_2]_{\ell_1}\vdash t:T_1$}
-	\AXC{$\ell_1\sqsubseteq\ell_2$}
+	\AXC{$\ell_2\sqsubseteq\ell_1$}
 	\RightLabel{\textsc{T-Approx}}
 	\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
 \end{prooftree}
 
-The \emph{Dereliction} rule \textsc{T-Der} converts a regular assumption to a graded assumption marked with $\secret$, since the assumption is potentially being used by the term $t$. The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to "tighten" the requirement if $\ell_1\sqsubseteq\ell_2$.
+The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix A.3}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to "loosen" the requirement if $\ell_2\sqsubseteq\ell_1$.
+
+The remaining rules specify the types of booleans, natural numbers, unit values, and conditionals, etc.
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-True}}
+	\UIC{$\srzero\cdot\Gamma\vdash\true:\bool$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-False}}
+	\UIC{$\srzero\cdot\Gamma\vdash\false:\bool$}
+\end{prooftree}
+
+\begin{prooftree}
+	\def\defaultHypSeparation{\hskip .03in}
+	\AXC{$\Gamma_1\vdash t_1:\bool$}
+	\AXC{$\Gamma_2\vdash t_2:T$}
+	\AXC{$\Gamma_2\vdash t_3:T$}
+	\AXC{$\ell\sqsubseteq\srone$}
+	\RightLabel{\textsc{T-Cond}}
+	\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-Zero}}
+	\UIC{$\srzero\cdot\Gamma\vdash0:\nat$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:\nat$}
+	\RightLabel{\textsc{T-Succ}}
+	\UIC{$\Gamma\vdash\suc t:\nat$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:\nat$}
+	\RightLabel{\textsc{T-Pred}}
+	\UIC{$\Gamma\vdash\prd t:\nat$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:\nat$}
+	\RightLabel{\textsc{T-IsZero}}
+	\UIC{$\Gamma\vdash\iszero t:\bool$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{T-Unit}}
+	\UIC{$\srzero\cdot\Gamma\vdash\unt:\untt$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma_1\vdash t_1:\untt$}
+	\AXC{$\Gamma_2\vdash t_2:T$}
+	\RightLabel{\textsc{T-UnitElim}}
+	\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
+\end{prooftree}
+
+A noteworthy point of these rules is the premise $\ell\sqsubseteq 1$ of rule \textsc{T-Cond}. This requirement is added to prevent the \emph{control flow attack} via \emph{implicit flow}, in which the attacker uses some form of equality checking and control flow to leak information. For example, the following typing derivation is invalid in our system:
+
+\begin{prooftree}
+	\def\defaultHypSeparation{\hskip .03in}
+	\AXC{$x:[\bool]_\public\vdash x:\bool$}
+	\AXC{$\vdash 0:\nat$}
+	\AXC{$\vdash 42:\nat$}
+	\AXC{$\secret\sqsubseteq\srone$}
+	\QuaternaryInfC{$x:[\bool]_\secret\vdash\cond{x}{0}{42}:\nat$}
+\end{prooftree}
+
+This is the same solution in Abel and Bernardy \cite{abel2020unified} and Choudhury et al. \cite{choudhury2021graded}.
 
 \subsection{Operational Semantics}
 
@@ -218,7 +281,7 @@ $$
 
 The central innovation of \textsc{FlowSTLC} is the use of a graded modality $\gradedt{\ell}{T}$ to track and control information flow. This modality is parameterized by a security grade $\ell$ drawn from the semiring $\secure$, where the ordering signifies that $\secret$ information is more sensitive than $\public$.
 
-Intuitively, a term of type $\gradedt{\ell}{T}$ is a value that should be used according to some security policies, the grade $\ell$ attached to the modality acts as a capability or a requirement: it specifies the minimum security level of the context necessary to "unbox" and use the value.
+Intuitively, a term of type $\gradedt{\ell}{T}$ is a value that should be used according to some security policies, the grade $\ell$ attached to the modality acts as a \emph{capability} or a requirement: it specifies the minimum security level of the context necessary to "unbox" and use the value.
 
 The power of this approach lies in the algebraic structure of the security semiring. The semiring operations (meet for addition, join for multiplication) naturally model the combination of security constraints:
 
@@ -251,10 +314,10 @@ then we need to show the following
 
 The (1) is trivial to show, but to prove the (2) typing judgement we need to use the $\textsf{T-Pro}$ rule on the judgement $y:T\vdash y:T$ (easy to obtain by \textsc{T-Var} rule), which requires us to show
 $$
-y:[T]_\ell\vdash y:T\quad\text{and}\quad \ell\cdot\texttt{Public}=\texttt{Secret}
+y:[T]_\ell\vdash y:T\quad\text{and}\quad \ell\cdot\public=\secret
 $$
 
-which is clearly impossible with $\texttt{Secret}\sqsubseteq\texttt{Public}$.
+which is clearly impossible with $\secret\sqsubseteq\public$.
 
 \section{Metatheory}
 \subsection{Substitution}
@@ -304,9 +367,9 @@ The proof for the permutation lemma is trivial since assumptions in contexts are
 
 \section{Related Work}
 
-Language-based IFC has a rich literature. Sabelfeld and Myers \cite{sabelfeld2003language} survey a variety of security type systems that enforce noninterference via typing. Seminal work by Volpano \emph{et al.} \cite{volpano1996sound} introduced a static type system for a simple imperative language, ensuring well-typed programs satisfy noninterference. Extensions include JFlow \cite{myers1999jflow} and JIF \cite{pullicino2014jif} for Java, which associate security labels with Java types to track flows, and FlowCaml \cite{simonet2003flow} for OCaml, which similarly adds a security type-checker. Generally, these systems label each variable as high or low and enforce rules so that no operation can use a high value in a low context.
+Language-based IFC has a rich literature. Sabelfeld and Myers \cite{sabelfeld2003language} survey a variety of security type systems that enforce noninterference via typing. Seminal work by Volpano et al. \cite{volpano1996sound} introduced a static type system for a simple imperative language, ensuring well-typed programs satisfy noninterference. Extensions include JFlow \cite{myers1999jflow} and JIF \cite{pullicino2014jif} for Java, which associate security labels with Java types to track flows, and FlowCaml \cite{simonet2003flow} for OCaml, which similarly adds a security type-checker. Generally, these systems label each variable as high or low and enforce rules so that no operation can use a high value in a low context.
 
-More recently, graded type theories have been proposed to generalize such analyses. Graded type systems annotate types with additional information ("grades") to capture various properties of programs. For example, the Granule language \cite{orchard2019quantitative} uses graded modalities to track the effects and coeffects of program. In information flow use-cases, types are graded by a security lattice, allowing automatic enforcement of noninterference. Moon \emph{et al.} introduce the Graded Modal Dependent Type Theory (\textsc{GrTT}) \cite{moon2021graded}, which extends dependent type system with graded modality and show that the grades can be effective at reasoning of programs. This work demonstrates that graded modality can capture fine-grained flow policies in types. Similarly, Marshall and Orchard \citen{marshall2023graded} demonstrated a graded-modal framework that can enforce confidentiality and even integrity simultaneously.
+More recently, graded type theories have been proposed to generalize such analyses. Graded type systems annotate types with additional information ("grades") to capture various properties of programs. For example, the Granule language \cite{orchard2019quantitative} uses graded modalities to track the effects and coeffects of program. In information flow use-cases, types are graded by a security lattice, allowing automatic enforcement of noninterference. Moon et al. introduce the Graded Modal Dependent Type Theory (\textsc{GrTT}) \cite{moon2021graded}, which extends dependent type system with graded modality and show that the grades can be effective at reasoning of programs. This work demonstrates that graded modality can capture fine-grained flow policies in types. Similarly, Marshall and Orchard \citen{marshall2023graded} demonstrated a graded-modal framework that can enforce confidentiality and even integrity simultaneously.
 
 Other approaches include dynamic IFC (e.g. LIO monad in Haskell \cite{stefan2011flexible}) or hybrid systems, but our focus is purely static. In summary, while classical security type sytems (JIF, FlowCaml, etc.) enforce noninterference via fixed lattice-labels. Our project draws on these ideas: we adapt graded modalities to a simple functional language to track information flows more flexibly.
 
@@ -423,7 +486,7 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \begin{prooftree}
 	\AXC{}
 	\RightLabel{\textsc{T-Var}}
-	\UIC{$\srzero\cdot\Gamma,x:[T]_\public\vdash x:T$}
+	\UIC{$\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$}
 \end{prooftree}
 
 \begin{prooftree}
