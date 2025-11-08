@@ -25,3 +25,40 @@
 *.synctex.gz(busy)
 *.pdfsync
 *.DS_Store
+
+flowstlc-compiler/target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.kotlin
+
+### IntelliJ IDEA ###
+flowstlc-compiler/.idea/modules.xml
+flowstlc-compiler/.idea/jarRepositories.xml
+flowstlc-compiler/.idea/compiler.xml
+flowstlc-compiler/.idea/libraries/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+flowstlc-compiler/nbproject/private/
+flowstlc-compiler/nbbuild/
+flowstlc-compiler/dist/
+flowstlc-compiler/nbdist/
+flowstlc-compiler/.nb-gradle/
+flowstlc-compiler/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/

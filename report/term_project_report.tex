@@ -218,7 +218,7 @@ The remaining rules specify the types of booleans, natural numbers, unit values,
 
 \begin{prooftree}
 	\AXC{$\Gamma_1\vdash t_1:\untt$}
-	\AXC{$\Gamma_2\vdash t_2:T$}
+	\AXC{$\Gqamma_2\vdash t_2:T$}
 	\RightLabel{\textsc{T-UnitElim}}
 	\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
 \end{prooftree}
@@ -238,59 +238,136 @@ This is the same solution in Abel and Bernardy \cite{abel2020unified} and Choudh
 
 \subsection{Operational Semantics}
 
-Once the type-checker shows that a program is well-typed, the AST is interpreted to execute following a standard call-by-value evaluation strategy. To make proving the \hyperref[thm-pre]{type preservation theorem} more easy, we specify the operational semantics of \textsc{FlowSTLC} in the small-step style. We first specify the value as lambda abstractions:
+Once the type-checker shows that a program is well-typed, the AST is interpreted to execute following a standard call-by-value evaluation strategy. To make proving the \hyperref[thm-pre]{type preservation theorem} more easy, we specify the operational semantics of \textsc{FlowSTLC} in the small-step style. We first specify the value as lambda abstractions and literals:
 $$
-\textsf{Value}\; v\;::=\;\lam{x\colon T}{t}
+\textsf{Value}\; v\;::=\;\lam{x\colon T}{t}\;|\; n\;|\; \true\;|\; \false \;|\;\unt
 $$
 
 The call-by-value reduction relation $t\to t'$ is then defined as follows:
 
 \begin{prooftree}
-	\AXC{$t_1\to t_1'$}
+	\AXC{$t_1\reduce t_1'$}
 	\RightLabel{\textsc{E-App1}}
-	\UIC{$t_1\; t_2\to t_1'\; t_2$}
+	\UIC{$t_1\; t_2\reduce t_1'\; t_2$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$t_2\to t_2'$}
+	\AXC{$t_2\reduce t_2'$}
 	\RightLabel{\textsc{E-App2}}
-	\UIC{$v_1\; t_2\to v_1\; t_2'$}
+	\UIC{$v_1\; t_2\reduce v_1\; t_2'$}
 \end{prooftree}
 
-$$
-(\lam{x:T}{t})\; v\to [x\mapsto v]t\quad\textsc{E-AppAbs}
-$$
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-AppAbs}}
+	\UIC{$(\lam{x:T}{t})\; v\reduce [x\mapsto v]t$}
+\end{prooftree}
 
 \begin{prooftree}
-	\AXC{$t\to t'$}
+	\AXC{$t\reduce t'$}
 	\RightLabel{\textsc{E-Pro}}
-	\UIC{$[t]\to[t']$}
+	\UIC{$[t]\reduce[t']$}
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{$t_1\to t_1'$}
+	\AXC{$t_1\reduce t_1'$}
 	\RightLabel{\textsc{E-Let-Eval}}
-	\UIC{$\unp{x}{t_1}{t_2}\to\unp{x}{t_1'}{t_2}$}
+	\UIC{$\unp{x}{t_1}{t_2}\reduce\unp{x}{t_1'}{t_2}$}
 \end{prooftree}
 
-$$
-\unp{x}{v}{t}\to [x\mapsto v]t\quad\textsc{E-Let-Unbox}
-$$
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Let-Unbox}}
+	\UIC{$\unp{x}{[v]}{t}\reduce [x\mapsto v]t$}
+\end{prooftree}
+
+The operational behavior of primitive values, functions, and conditionals is then specified in a intuitive manner:
+
+\begin{prooftree}
+	\AXC{$t_1\reduce t_1'$}
+	\RightLabel{\textsc{E-If-Eval}}
+	\UIC{$\cond{t_1}{t_2}{t_3}\reduce\cond{t_1'}{t_2}{t_3}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-If-True}}
+	\UIC{$\cond{\true}{t_2}{t_3}\reduce t_2$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-If-False}}
+	\UIC{$\cond{\false}{t_2}{t_3}\reduce t_3$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t_1\reduce t_1'$}
+	\RightLabel{\textsc{E-Unit-Elim-Eval}}
+	\UIC{$\une{t_1}{t_2}\reduce\une{t_1'}{t_2}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Unit-Elim}}
+	\UIC{$\une{\unt}{t}\reduce t$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t\reduce t'$}
+	\RightLabel{\textsc{E-Succ}}
+	\UIC{$\suc{t}\reduce\suc{t'}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t\reduce t'$}
+	\RightLabel{\textsc{E-Pred}}
+	\UIC{$\prd{t}\reduce\prd{t'}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t\reduce t'$}
+	\RightLabel{\textsc{E-IsZero}}
+	\UIC{$\iszero{t}\reduce\iszero{t'}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Pred-Zero}}
+	\UIC{$\prd 0\reduce 0$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-Pred-Succ}}
+	\UIC{$\prd{\suc t}\reduce t$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-IsZero-Zero}}
+	\UIC{$\iszero 0\reduce\true$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-IsZero-Succ}}
+	\UIC{$\iszero{\suc t}\reduce\false$}
+\end{prooftree}
 
 \subsection{Graded Modality}
 
 The central innovation of \textsc{FlowSTLC} is the use of a graded modality $\gradedt{\ell}{T}$ to track and control information flow. This modality is parameterized by a security grade $\ell$ drawn from the semiring $\secure$, where the ordering signifies that $\secret$ information is more sensitive than $\public$.
 
-Intuitively, a term of type $\gradedt{\ell}{T}$ is a value that should be used according to some security policies, the grade $\ell$ attached to the modality acts as a \emph{capability} or a requirement: it specifies the minimum security level of the context necessary to "unbox" and use the value.
+Intuitively, a term of type $\gradedt{\ell}{T}$ is a value that should be used according to some security policies, the grade $\ell$ attached to the modality acts as a capability or a requirement: it specifies the minimum security level of the context necessary to "unbox" and use the value.
 
 The power of this approach lies in the algebraic structure of the security semiring. The semiring operations (meet for addition, join for multiplication) naturally model the combination of security constraints:
 
 \begin{itemize}
-	\item \textbf{Context Concatenation} uses the join operation ($\sqcap$) to combine graded assumptions for the same variable. This reflects the principle that if a value can be used publicly, them it should also can be used secretly elsewhere. For example, using a variable in two different parts of a program, one requiring $\secret$ and the other $\public$, results in a combined requirement of $\secret$ ($\secret\sqcup\public = \public$).
+	\item \textbf{Context Concatenation} uses the join operation ($\sqcap$) to combine graded assumptions for the same variable. This reflects the principle that if a value can be used publicly, them it should also can be used secretly elsewhere. For example, using a variable in two different parts of a program, one requiring $\secret$ and the other $\public$, results in a combined requirement of $\public$ ($\secret\sqcap\public = \public$).
 	
-	\item \textbf{Context Scalar Multiplication} also uses the join operation ($\sqcup$) with a exception when one label is $\irrele$. to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
+	\item \textbf{Context Scalar Multiplication} uses the meet operation ($\sqcup$). to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
 \end{itemize}
-
 
 In essence, the graded modality $\gradedt{\ell}{T}$ serves as a security-aware container. The type system's rules ensure that the "capability" $\ell$ needed to open this container is always respected, thereby statically guaranteeing that high-sensitivity data cannot flow into low-sensitivity outputs.
 
