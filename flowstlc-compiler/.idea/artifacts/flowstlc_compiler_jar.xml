@@ -1,0 +1,12 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="flowstlc-compiler:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/flowstlc_compiler_jar</output-path>
+    <root id="archive" name="flowstlc-compiler.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="module-output" name="flowstlc-compiler" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/antlr/antlr4-runtime/4.13.2/antlr4-runtime-4.13.2.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
