@@ -1,0 +1,160 @@
+\documentclass{beamer}
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+
+% other packages
+\usepackage{latexsym,amsmath,xcolor,multicol,booktabs,calligra}
+\usepackage{graphicx,pstricks,listings,stackengine}
+
+\author{Zhige Chen, Junqi Huang, Zhiyuan Cao}
+\title{CS315 Computer Security Project Progress Report}
+\subtitle{FlowSTLC: An Information Flow Control Type System Based On Graded Modality}
+\institute{\textit{Department of Computer Science and Engineering, SUSTech}}
+\date{November 18, 2025}
+\usepackage{SUSTech}
+
+\lstset{ %
+    backgroundcolor=\color{white}, 
+    basicstyle=\footnotesize,       
+    breakatwhitespace=false,        
+    breaklines=true,                 
+    captionpos=b,                    
+    commentstyle=\color{mygreen},   
+    escapeinside={\%*}{*)},        
+    extendedchars=true,              
+    frame=single,                  
+    keywordstyle=\color{blue},       
+    language=Prolog,                
+    numbers=left,                    
+    numbersep=5pt,                   
+    numberstyle=\tiny\color{mygray},
+    rulecolor=\color{black},        
+    showspaces=false,               
+    showstringspaces=false,          
+    showtabs=false,                  
+    stepnumber=1,                    
+    stringstyle=\color{mymauve},   
+    tabsize=2,                      
+    title=\lstname,                  
+    morekeywords={fun, Int, Public, Secure, if, then, else, Unit}
+}
+
+% defs
+\def\cmd#1{\texttt{\color{red}\footnotesize $\backslash$#1}}
+\def\env#1{\texttt{\color{blue}\footnotesize #1}}
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+\definecolor{halfgray}{gray}{0.55}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\bfseries\color{deepblue},
+    emphstyle=\ttfamily\color{deepred},    % Custom highlighting style
+    stringstyle=\color{deepgreen},
+    numbers=left,
+    numberstyle=\small\color{halfgray},
+    rulesepcolor=\color{red!20!green!20!blue!20},
+    frame=shadowbox,
+}
+
+
+\begin{document}
+    \begin{frame}
+        \titlepage
+        \begin{figure}[htbp]
+            \begin{center}
+                \includegraphics[scale = 0.16]{pic/LOGO.png}
+            \end{center}
+        \end{figure}
+    \end{frame}
+    
+    \begin{frame}{Project Overview}
+        \begin{itemize}
+            \item \textbf{Goal}: design and implement a simply-typed lambda calculus with graded modality to enforce secure information flow (noninterference property).
+            \item \textbf{Core ideas}: use a graded necessity $\square_\ell T$ on a security semiring $\{\texttt{Pub}\sqsubseteq\texttt{Sec}\}$ to track the security requirement of information.
+        \end{itemize}
+        The project (implementation, report draft, and Lean 4 formalization) is available at https://github.com/nofe1248/cs315-term-project/.
+    \end{frame}
+    
+    \begin{frame}{Current Progress}
+        Completed:
+        \begin{itemize}
+            \item Lexer and parser are implemented using ANTLR4.
+            \item AST generation completed and integrated with parse trees.
+            \item Complete specification of the syntax, typing rules, and small-step operational semantics of our type system.
+        \end{itemize}
+        Ongoing:
+        \begin{itemize}
+            \item Type checker implementation.
+            \item AST-based interpreter.
+            \item Lean 4 formalization of the type system and relevant proofs: about halfway finished.
+        \end{itemize}
+    \end{frame}
+    
+    \begin{frame}{Next Steps}
+        \begin{itemize}
+            \item Complete type checker and interpreter implementation (2-3 weeks).
+            \item Complete Lean 4 formalization (3-4 weeks, proceed simultaneously with the language implementation).
+            \item Prepare a demo and evaluation: write example programs, finish the project report, etc. (1 week).
+        \end{itemize}
+    \end{frame}
+    
+    \begin{frame}{Small Demo for Current Implementation}
+        \begin{figure}[H]
+            \centering
+            \caption{AST generation demo}
+            \includegraphics[width=0.89\textwidth]{./ast_gen.png}            
+        \end{figure}
+    \end{frame}
+    
+    \defverbatim[colored]\flowstlcsource{
+        \begin{lstlisting}[basicstyle=\ttfamily,keywordstyle=\color{blue}]
+fun fib : Int^Public -> Int
+fun fib n = 
+    if n <= 0 then 0
+    else (
+        if n == 1 or n == 2 then 1
+        else (fib (n - 1)) + (fib (n - 2))
+    )
+
+fun main : Unit^Public -> Int
+fun main = fib 10
+        \end{lstlisting}
+    }
+    
+    \begin{frame}{Small Demo for Current Implementation}
+        The source code:
+        \flowstlcsource
+    \end{frame}
+    
+    \defverbatim[colored]\ast{
+        \begin{lstlisting}[basicstyle=\ttfamily,keywordstyle=\color{blue}]
+Program
+  declarations:
+    [0]:
+      FunctionDeclaration name=fib
+        parameters: n
+        type:
+          FunctionType
+            from:
+              BuiltinType kind=INT
+            level: PUBLIC
+            to:
+              BuiltinType kind=INT
+        body:
+          IfExpr
+          ...
+        \end{lstlisting}
+    }
+    \begin{frame}{Small Demo for Current Implementation}
+        \ast
+    \end{frame}
+    
+    \begin{frame}
+        \begin{center}
+            {\Huge Thanks!}
+        \end{center}
+    \end{frame}
+\end{document}

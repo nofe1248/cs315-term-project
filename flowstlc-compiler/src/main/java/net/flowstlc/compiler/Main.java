@@ -49,6 +49,11 @@ public class Main {
                 ASTPrinter printer = new ASTPrinter();
                 printer.print(program);
             }
+
+            TypeChecker checker = new TypeChecker();
+            checker.checkProgram(program, ns.getString("entry_point"));
+        } catch (TypeError t) {
+            System.err.println("Type error: " + t.getMessage());
         } catch (Exception e) {
             System.err.println("Error while running flowstlc-compiler: " + e.getMessage());
             e.printStackTrace(System.err);
