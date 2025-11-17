@@ -218,7 +218,7 @@ The remaining rules specify the types of booleans, natural numbers, unit values,
 
 \begin{prooftree}
 	\AXC{$\Gamma_1\vdash t_1:\untt$}
-	\AXC{$\Gqamma_2\vdash t_2:T$}
+	\AXC{$\Gamma_2\vdash t_2:T$}
 	\RightLabel{\textsc{T-UnitElim}}
 	\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
 \end{prooftree}
@@ -375,52 +375,36 @@ In essence, the graded modality $\gradedt{\ell}{T}$ serves as a security-aware c
 
 We demonstrate the system's capability of enforcing noninterferencee by showing the system would reject the following program:
 $$
-\lam{x:\gradedt{\secret}{T}}{\textbf{let }[y]=x\textbf{ in }[y]}:\gradedt{\secret}{T}\to\gradedt{\public}{T}
+\lam{x:\gradedt{\secret}{T}}{\textbf{let }[y]=x\textbf{ in }y}:\gradedt{\secret}{T}\to^\public T
 $$
 
 since it try to use a $\secret$ value to compute a $\public$ value. To type this term, we first need to show that
 $$
-x:\gradedt{\secret}{T}\vdash \textbf{let }[y]=x\textbf{ in }[y]:\gradedt{\secret}{T}\to\gradedt{\public}{T}
+x:[\gradedt{\secret}{T}]_\public\vdash \textbf{let }[y]=x\textbf{ in }y:\gradedt{\secret}{T}\to^\public T
 $$
 
-then we need to show the following
+then according to the premises of \textsc{T-Let} rule, we need to show the following
 \begin{enumerate}
-	\item $x:\gradedt{\secret}{T}\vdash x:\gradedt{\secret}{T}$ 
-	\item $y:[T]_\secret\vdash [y]:\gradedt{\public}{T}$
+	\item $x:[\gradedt{\secret}{T}]_\public\vdash x:\gradedt{\secret}{T}$ 
+	\item $y:[T]_\secret\vdash y:T$
 \end{enumerate}
 
-The (1) is trivial to show, but to prove the (2) typing judgement we need to use the $\textsf{T-Pro}$ rule on the judgement $y:T\vdash y:T$ (easy to obtain by \textsc{T-Var} rule), which requires us to show
-$$
-y:[T]_\ell\vdash y:T\quad\text{and}\quad \ell\cdot\public=\secret
-$$
-
-which is clearly impossible with $\secret\sqsubseteq\public$.
+The (1) is trivial to show, but there is no rule that allows the derivation of (2). \textsc{T-Var} rule doesn't help here because it requires that the used variable must have a $\public$ grade. So the term is ill-typed.
 
 \section{Metatheory}
-\subsection{Substitution}
+\subsection{Type Safety}
 \label{lem-perm}
 \begin{lemma}[Permutation]
 	If $\Gamma\vdash t:T$ and $\Delta$ is a permutation of $\Gamma$, then $\Delta\vdash t:T$ and the derivation depth of the latter is the same as the former.
 \end{lemma}
-The proof for the permutation lemma is trivial since assumptions in contexts are unrelated in a simply-typed context. The permutation lemma enables us to state the two substitution lemmas in a cleaner form, we first prove the well-typedness of substitution through regular assumptions:
+The proof for the permutation lemma is trivial since assumptions in contexts are unrelated in a simply-typed context. Then we prove the well-typedness of substitution, this lemma is then used to establish syntactic type safety.
 \begin{lemma}[Well-typed Substitution] 
-	If $\Gamma,x:S\vdash t:T$ and $\Delta\vdash s:S$, then $\Gamma+\Delta\vdash [x\mapsto s]t:T$.
+	If $\Gamma_1\vdash t_1:T_1$ and $\Gamma_2,x:[T_1]_\ell\vdash t_2:T_2$, then we have $\Gamma_1+\ell\cdot\Gamma_2\vdash[x\mapsto t_1]t_2:T_2$.
 \end{lemma}
-
-\begin{lemma}[Well-typed Graded Substitution] 
-	If $\Gamma,x:[S]_\ell\vdash t:T$ and $[\Delta]\vdash s:S$, then $\Gamma+\ell\cdot\Delta\vdash [x\mapsto s]t:T$.
-\end{lemma}
-
-\subsection{Type Preservation}
-\label{thm-pre}
+We then state the type safety lemma as follows:
+\label{thm-type-safety}
 \begin{theorem}[Type Preservation]
-	If $\Gamma\vdash t:T$ and $t\to t'$, then $\Gamma\vdash t':T$
-\end{theorem}
-
-\subsection{Progression}
-\label{thm-pro}
-\begin{theorem}[Progression]
-	Suppose $t$ is a closed and well-typed \text{FlowSTLC} term (i.e., $\emptyset\vdash t:T$ for some $T$), then either $t$ is a value or there exists some $t'$ s.t. $t\to t'$.
+	If $\Gamma\vdash t:T$, then either $t$ is a value or there exists a $t'$ s.t. $t\rightsquigarrow t'$ with $\Gamma\vdash t:T$.
 \end{theorem}
 
 \subsection{Strong Normalization}
@@ -429,14 +413,9 @@ The proof for the permutation lemma is trivial since assumptions in contexts are
 	If $t$ is a closed and well-typed \text{FlowSTLC} term, then $t$ is normalizable.
 \end{theorem}
 
-\subsection{Noninterference}
-\begin{definition}[Low-equivalence]
-	Two terms $t_1$	and $t_2$ are low-equivalent at security level $\ell$, written $t_1\approx_\ell t_2$, if they are identical except for the values of their subterms that have a grade $\ell'$ where $\ell\sqsubseteq\ell'$.	
-\end{definition}
-\label{thm-noninterference}
-\begin{theorem}[Noninterference]
-	For a closed and well-typed $\public$-graded term $t$, i.e. $\emptyset\vdash t:\gradedt{\public}{T}$ for some $T$. Then for two arbitrary executions $t\to^* v_1$ and $t\to^* v_2$ where only $\secret$-graded values differ, we have $v_1=v_2$.
-\end{theorem}
+\subsection{Fundamental Theorems and Noninterference}
+
+Our definition of type semantics by building a logical relation model following the work of Rajani et al. \cite{rajani2018types}. The key difference between our approach and the work of Rajani et al. is that our calculus use a coeffect-based analysis instead of effect-based analysis.
 
 \section{Bidirectional Type Checking Algorithm}
 
