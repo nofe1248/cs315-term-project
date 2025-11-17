@@ -76,6 +76,11 @@ public class BaseASTVisitor<R> implements ASTVisitor<R> {
     }
 
     @Override
+    public R visitUnannotatedFunctionType(UnannotatedFunctionType type) {
+        return defaultResult();
+    }
+
+    @Override
     public R visitUnaryExpr(UnaryExpr expr) {
         return defaultResult();
     }

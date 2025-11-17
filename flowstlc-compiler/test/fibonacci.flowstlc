@@ -1,0 +1,10 @@
+fun fib : Int^Public -> Int
+fun fib n = 
+    if n <= 0 then 0
+    else (
+        if n == 1 or n == 2 then 1
+        else (fib (n - 1)) + (fib (n - 2))
+    )
+
+fun main : Unit^Public -> Int
+fun main = fib 10

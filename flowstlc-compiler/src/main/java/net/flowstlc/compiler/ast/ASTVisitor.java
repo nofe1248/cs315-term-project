@@ -15,6 +15,7 @@ public interface ASTVisitor<R> {
     R visitModalityExpr(ModalityExpr type);
     R visitModalityType(ModalityType type);
     R visitProgram(Program program);
+    R visitUnannotatedFunctionType(UnannotatedFunctionType type);
     R visitUnaryExpr(UnaryExpr expr);
     R visitUnitLiteralExpr(UnitLiteralExpr expr);
 }
