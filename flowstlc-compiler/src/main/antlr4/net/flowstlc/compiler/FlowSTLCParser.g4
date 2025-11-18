@@ -32,7 +32,7 @@ function_argument_list :
 ;
 
 security_level
-    : KW_SECURE #LevelSecure
+    : KW_SECRET #LevelSecret
     | KW_PUBLIC #LevelPublic
 ;
 

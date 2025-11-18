@@ -1,6 +1,6 @@
 package net.flowstlc.compiler.ast;
 
 public enum SecurityLevel {
-    SECURE,
+    SECRET,
     PUBLIC
 }

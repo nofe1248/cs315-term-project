@@ -13,7 +13,7 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
     private final Map<String, Type> constantTypes = new HashMap<>();
 
     private TypeEnv env = new TypeEnv();
-    private SecurityLevel requiredGrade = SecurityLevel.SECURE;
+    private SecurityLevel requiredGrade = SecurityLevel.SECRET;
 
     public void checkProgram(Program program, String entryPoint) {
         for (Declaration decl : program.getDeclarations()) {
@@ -46,14 +46,14 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
 
         if (!(mainType.getFrom() instanceof BuiltinType bt && bt.getKind() == BuiltinKind.UNIT
                 && mainType.getTo() instanceof BuiltinType bt2 && bt2.getKind() == BuiltinKind.INT
-                && (mainType.getLevel() == SecurityLevel.SECURE || mainType.getLevel() == SecurityLevel.PUBLIC))) {
+                && (mainType.getLevel() == SecurityLevel.SECRET || mainType.getLevel() == SecurityLevel.PUBLIC))) {
             throw new TypeError(String.format("Entry point function %s must have type Unit^Sec -> Int or Unit^Pub -> Int", entryPoint));
         }
     }
 
     private void checkConstant(ConstantDeclaration cd) {
         Type expected = cd.getType();
-        Type actual = checkExpr(cd.getValue(), new TypeEnv(), SecurityLevel.SECURE);
+        Type actual = checkExpr(cd.getValue(), new TypeEnv(), SecurityLevel.SECRET);
         if (!typeEquals(expected, actual)) {
             throw new TypeError(String.format("Constant '%s' has type %s but expected %s",
                     cd.getName(), showType(actual), showType(expected)));
@@ -88,10 +88,10 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
             localEnv = localEnv.extend(name, paramTypes[i], paramGrades[i]);
         }
         for (Map.Entry<String, Type> e : constantTypes.entrySet()) {
-            localEnv = localEnv.extend(e.getKey(), e.getValue(), SecurityLevel.SECURE);
+            localEnv = localEnv.extend(e.getKey(), e.getValue(), SecurityLevel.SECRET);
         }
 
-        Type bodyType = checkExpr(fd.getBody(), localEnv, SecurityLevel.SECURE);
+        Type bodyType = checkExpr(fd.getBody(), localEnv, SecurityLevel.SECRET);
         if (!typeEquals(returnType, bodyType)) {
             throw new TypeError("Function '" + fd.getName() + "' body has type " + showType(bodyType)
                     + " but expected " + showType(returnType));
@@ -142,7 +142,7 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
         Type constType = constantTypes.get(name);
         if (constType != null) {
             // constants treated as SECURE
-            if (!leq(requiredGrade, SecurityLevel.SECURE)) {
+            if (!leq(requiredGrade, SecurityLevel.SECRET)) {
                 throw new TypeError("Using constant '" + name + "' violates security grade");
             }
             return constType;

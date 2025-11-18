@@ -86,8 +86,8 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitLevelSecure(FlowSTLCParser.LevelSecureContext ctx) {
-        return SecurityLevel.SECURE;
+    public Object visitLevelSecret(FlowSTLCParser.LevelSecretContext ctx) {
+        return SecurityLevel.SECRET;
     }
 
     @Override

@@ -1,4 +1,4 @@
-fun fib : Int^Public -> Int
+fun fib : Int^Pub -> Int
 fun fib n = 
     if n <= 0 then 0
     else (
@@ -6,5 +6,5 @@ fun fib n =
         else (fib (n - 1)) + (fib (n - 2))
     )
 
-fun main : Unit^Public -> Int
+fun main : Unit^Pub -> Int
 fun main = fib 10

@@ -1,8 +1,8 @@
 val foo : Int = 42
 val bar : Bool = true
 
-fun multiplyByTwo : Int^Public -> Int
+fun multiplyByTwo : Int^Pub -> Int
 fun multiplyByTwo n = n * 2
 
-fun main : Unit^Public -> Int
+fun main : Unit^Pub -> Int
 fun main = multiplyByTwo foo

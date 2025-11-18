@@ -9,6 +9,8 @@
 \usepackage{xcolor}
 \usepackage{simplebnf}
 \usepackage{bussproofs}
+\usepackage{stmaryrd}
+\usepackage{float}
 \usepackage[colorlinks]{hyperref}
 \EnableBpAbbreviations
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
@@ -34,6 +36,8 @@
 \newcommand\srzero{\textbf{0}}
 \newcommand\srone{\textbf{1}}
 \newcommand\reduce{\rightsquigarrow}
+\newcommand\calv{\mathcal{V}}
+\newcommand\cale{\mathcal{E}}
 
 \newtheorem{definition}{Definition}
 \newtheorem{theorem}{Theorem}
@@ -97,14 +101,18 @@ The \textsc{FlowSTLC} is a graded extension to the simply typed lambda-calculus 
 
 The syntax of \textsc{FlowSTLC} is a straightforward extension of STLC with two additional constructs for introducing and eliminating the graded necessity type $\gradedt{\ell}{T}$. We also add built-in boolean, natural numbers, and unit type to it:
 
-$$
-\begin{aligned}
-	\textsf{Term}\;t\;&::=&\;x\;|\;t\; t\;|\;\lambda x.t\;|\;[t]\;|\;\textbf{let }[x]=t\textbf{ in }t\\
-	&&\true\;|\;\false\;|\;\cond{t}{t}{t}\;|\; n\\
-	&&\iszero{t}\;|\;\unt\;|\;\une{t}{t}\\
-	\textsf{Type}\;T\;&::=&\;T\to^\ell T\;|\;\square_r T\;|\;\untt\;|\;\bool\;|\;\nat\\
-\end{aligned}
-$$
+\begin{figure}[H]
+	\centering
+	$$
+	\begin{aligned}
+		\textsf{Term}\;t\;&::=&\;x\;|\;t\; t\;|\;\lambda x.t\;|\;[t]\;|\;\textbf{let }[x]=t\textbf{ in }t\\
+		&&\true\;|\;\false\;|\;\cond{t}{t}{t}\;|\; n\\
+		&&\iszero{t}\;|\;\unt\;|\;\une{t}{t}\\
+		\textsf{Type}\;T\;&::=&\;T\to^\ell T\;|\;\square_r T\;|\;\untt\;|\;\bool\;|\;\nat\\
+	\end{aligned}
+	$$
+	\caption{Syntax of \textsc{FlowSTLC}}
+\end{figure}
 
 The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The function type $T\to^\ell T$ records how will the function use its argument by a grade $\ell$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\public\sqsubseteq\secret$. The built-in booleans, natural numbers, and unit types are easy and well-studied extensions, and we will omit the explanation of these constructs here.
 
@@ -118,110 +126,122 @@ Contexts are either empty $\emptyset$, or can be extended with  a \emph{graded a
 \subsection{Typing}
 
 \textsc{FlowSTLC} has all three standard typing rules of STLC:
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{T-Var}}
-	\UIC{$\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma,x:[T_1]_\ell\vdash t:T_2$}
-	\RightLabel{\textsc{T-Abs}}
-	\UIC{$\Gamma\vdash\lam{x:T_1}{t}:T_1\to^\ell T_2$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma_1\vdash t_1:T_{11}\to^\ell T_{12}$}
-	\AXC{$\Gamma_2\vdash t_2:T_{11}$}
-	\RightLabel{\textsc{T-App}}
-	\BIC{$\Gamma_1+\ell\cdot\Gamma_2\vdash t_1\; t_2:T_{12}$}
-\end{prooftree}
+\begin{figure}[H]
+	\centering
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{T-Var}}
+		\UIC{$\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma,x:[T_1]_\ell\vdash t:T_2$}
+		\RightLabel{\textsc{T-Abs}}
+		\UIC{$\Gamma\vdash\lam{x:T_1}{t}:T_1\to^\ell T_2$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma_1\vdash t_1:T_{11}\to^\ell T_{12}$}
+		\AXC{$\Gamma_2\vdash t_2:T_{11}$}
+		\RightLabel{\textsc{T-App}}
+		\BIC{$\Gamma_1+\ell\cdot\Gamma_2\vdash t_1\; t_2:T_{12}$}
+	\end{prooftree}
+	\caption{STLC rules in \textsc{FlowSTLC}}
+\end{figure}
 
 The exchange rule and weakening rule that allow permutation and expansion of contexts is implicit here, instead we enables the permutation by a permutation lemma (see \hyperref[lem-perm]{Permutation lemma}). The differences with the standard rules are that these rules integrate grades into the premises and conclusions. For example, the \textsc{T-Var} rule enforces that we only use $x$ by requiring all other assumptions have a $\secret$ grade. And the abstraction rule \textsc{T-Abs} records the usage of variable $x$ in function body by marking the function's type with the same grade of the assumption that assigns $x$. For the application rule \textsc{T-App}, the concatenation combines all graded assumptions by the semiring addition $+$ (for more information see the \hyperref[def-concat]{Appendix A.3}).
 
 The next three rules build the structure of the security label semiring:
-\begin{prooftree}
-	\AXC{$\Gamma\vdash t:T$}
-	\RightLabel{\textsc{T-Pro}}
-	\UIC{$\ell\cdot\Gamma\vdash[t]:\gradedt{\ell}{T}$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma_1\vdash t_1:\gradedt{\ell}{T_1}$}
-	\AXC{$\Gamma_2,x:[T_1]_\ell\vdash t_2:T_2$}
-	\RightLabel{\textsc{T-Let}}
-	\BIC{$\Gamma_1+\Gamma_2\vdash\unp{x}{t_1}{t_2}:T_2$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma,x:[T_2]_{\ell_1}\vdash t:T_1$}
-	\AXC{$\ell_2\sqsubseteq\ell_1$}
-	\RightLabel{\textsc{T-Approx}}
-	\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
-\end{prooftree}
+\begin{figure}[H]
+	\centering
+	\begin{prooftree}
+		\AXC{$\Gamma\vdash t:T$}
+		\RightLabel{\textsc{T-Pro}}
+		\UIC{$\ell\cdot\Gamma\vdash[t]:\gradedt{\ell}{T}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma_1\vdash t_1:\gradedt{\ell}{T_1}$}
+		\AXC{$\Gamma_2,x:[T_1]_\ell\vdash t_2:T_2$}
+		\RightLabel{\textsc{T-Let}}
+		\BIC{$\Gamma_1+\Gamma_2\vdash\unp{x}{t_1}{t_2}:T_2$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma,x:[T_2]_{\ell_1}\vdash t:T_1$}
+		\AXC{$\ell_2\sqsubseteq\ell_1$}
+		\RightLabel{\textsc{T-Approx}}
+		\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
+	\end{prooftree}
+	\caption{Grade Rules in \textsc{FlowSTLC}}
+\end{figure}
 
 The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix A.3}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to "loosen" the requirement if $\ell_2\sqsubseteq\ell_1$.
 
 The remaining rules specify the types of booleans, natural numbers, unit values, and conditionals, etc.
 
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{T-True}}
-	\UIC{$\srzero\cdot\Gamma\vdash\true:\bool$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{T-False}}
-	\UIC{$\srzero\cdot\Gamma\vdash\false:\bool$}
-\end{prooftree}
-
-\begin{prooftree}
-	\def\defaultHypSeparation{\hskip .03in}
-	\AXC{$\Gamma_1\vdash t_1:\bool$}
-	\AXC{$\Gamma_2\vdash t_2:T$}
-	\AXC{$\Gamma_2\vdash t_3:T$}
-	\AXC{$\ell\sqsubseteq\srone$}
-	\RightLabel{\textsc{T-Cond}}
-	\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{T-Zero}}
-	\UIC{$\srzero\cdot\Gamma\vdash0:\nat$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma\vdash t:\nat$}
-	\RightLabel{\textsc{T-Succ}}
-	\UIC{$\Gamma\vdash\suc t:\nat$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma\vdash t:\nat$}
-	\RightLabel{\textsc{T-Pred}}
-	\UIC{$\Gamma\vdash\prd t:\nat$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma\vdash t:\nat$}
-	\RightLabel{\textsc{T-IsZero}}
-	\UIC{$\Gamma\vdash\iszero t:\bool$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{T-Unit}}
-	\UIC{$\srzero\cdot\Gamma\vdash\unt:\untt$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$\Gamma_1\vdash t_1:\untt$}
-	\AXC{$\Gamma_2\vdash t_2:T$}
-	\RightLabel{\textsc{T-UnitElim}}
-	\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
-\end{prooftree}
+\begin{figure}[H]
+	\centering
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{T-True}}
+		\UIC{$\srzero\cdot\Gamma\vdash\true:\bool$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{T-False}}
+		\UIC{$\srzero\cdot\Gamma\vdash\false:\bool$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\def\defaultHypSeparation{\hskip .03in}
+		\AXC{$\Gamma_1\vdash t_1:\bool$}
+		\AXC{$\Gamma_2\vdash t_2:T$}
+		\AXC{$\Gamma_2\vdash t_3:T$}
+		\AXC{$\ell\sqsubseteq\srone$}
+		\RightLabel{\textsc{T-Cond}}
+		\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{T-Zero}}
+		\UIC{$\srzero\cdot\Gamma\vdash0:\nat$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma\vdash t:\nat$}
+		\RightLabel{\textsc{T-Succ}}
+		\UIC{$\Gamma\vdash\suc t:\nat$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma\vdash t:\nat$}
+		\RightLabel{\textsc{T-Pred}}
+		\UIC{$\Gamma\vdash\prd t:\nat$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma\vdash t:\nat$}
+		\RightLabel{\textsc{T-IsZero}}
+		\UIC{$\Gamma\vdash\iszero t:\bool$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{T-Unit}}
+		\UIC{$\srzero\cdot\Gamma\vdash\unt:\untt$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma_1\vdash t_1:\untt$}
+		\AXC{$\Gamma_2\vdash t_2:T$}
+		\RightLabel{\textsc{T-UnitElim}}
+		\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
+	\end{prooftree}
+	\caption{Typing Rules for Built-in Booleans, Integers, etc.}
+\end{figure}
 
 A noteworthy point of these rules is the premise $\ell\sqsubseteq 1$ of rule \textsc{T-Cond}. This requirement is added to prevent the \emph{control flow attack} via \emph{implicit flow}, in which the attacker uses some form of equality checking and control flow to leak information. For example, the following typing derivation is invalid in our system:
 
@@ -239,121 +259,134 @@ This is the same solution in Abel and Bernardy \cite{abel2020unified} and Choudh
 \subsection{Operational Semantics}
 
 Once the type-checker shows that a program is well-typed, the AST is interpreted to execute following a standard call-by-value evaluation strategy. To make proving the \hyperref[thm-pre]{type preservation theorem} more easy, we specify the operational semantics of \textsc{FlowSTLC} in the small-step style. We first specify the value as lambda abstractions and literals:
-$$
-\textsf{Value}\; v\;::=\;\lam{x\colon T}{t}\;|\; n\;|\; \true\;|\; \false \;|\;\unt
-$$
+
+\begin{figure}[H]
+	\centering
+	$$
+	\textsf{Value}\; v\;::=\;\lam{x\colon T}{t}\;|\; n\;|\; \true\;|\; \false \;|\;\unt
+	$$
+	\caption{Value of \textsc{FlowSTLC}}
+\end{figure}
 
 The call-by-value reduction relation $t\to t'$ is then defined as follows:
 
-\begin{prooftree}
-	\AXC{$t_1\reduce t_1'$}
-	\RightLabel{\textsc{E-App1}}
-	\UIC{$t_1\; t_2\reduce t_1'\; t_2$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$t_2\reduce t_2'$}
-	\RightLabel{\textsc{E-App2}}
-	\UIC{$v_1\; t_2\reduce v_1\; t_2'$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-AppAbs}}
-	\UIC{$(\lam{x:T}{t})\; v\reduce [x\mapsto v]t$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$t\reduce t'$}
-	\RightLabel{\textsc{E-Pro}}
-	\UIC{$[t]\reduce[t']$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$t_1\reduce t_1'$}
-	\RightLabel{\textsc{E-Let-Eval}}
-	\UIC{$\unp{x}{t_1}{t_2}\reduce\unp{x}{t_1'}{t_2}$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-Let-Unbox}}
-	\UIC{$\unp{x}{[v]}{t}\reduce [x\mapsto v]t$}
-\end{prooftree}
+\begin{figure}[H]
+	\centering
+	\begin{prooftree}
+		\AXC{$t_1\reduce t_1'$}
+		\RightLabel{\textsc{E-App1}}
+		\UIC{$t_1\; t_2\reduce t_1'\; t_2$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t_2\reduce t_2'$}
+		\RightLabel{\textsc{E-App2}}
+		\UIC{$v_1\; t_2\reduce v_1\; t_2'$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-AppAbs}}
+		\UIC{$(\lam{x:T}{t})\; v\reduce [x\mapsto v]t$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t\reduce t'$}
+		\RightLabel{\textsc{E-Pro}}
+		\UIC{$[t]\reduce[t']$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t_1\reduce t_1'$}
+		\RightLabel{\textsc{E-Let-Eval}}
+		\UIC{$\unp{x}{t_1}{t_2}\reduce\unp{x}{t_1'}{t_2}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-Let-Unbox}}
+		\UIC{$\unp{x}{[v]}{t}\reduce [x\mapsto v]t$}
+	\end{prooftree}
+	\caption{Core Evaluation Rules of \textsc{FlowSTLC}}
+\end{figure}
 
 The operational behavior of primitive values, functions, and conditionals is then specified in a intuitive manner:
 
-\begin{prooftree}
-	\AXC{$t_1\reduce t_1'$}
-	\RightLabel{\textsc{E-If-Eval}}
-	\UIC{$\cond{t_1}{t_2}{t_3}\reduce\cond{t_1'}{t_2}{t_3}$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-If-True}}
-	\UIC{$\cond{\true}{t_2}{t_3}\reduce t_2$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-If-False}}
-	\UIC{$\cond{\false}{t_2}{t_3}\reduce t_3$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$t_1\reduce t_1'$}
-	\RightLabel{\textsc{E-Unit-Elim-Eval}}
-	\UIC{$\une{t_1}{t_2}\reduce\une{t_1'}{t_2}$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-Unit-Elim}}
-	\UIC{$\une{\unt}{t}\reduce t$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$t\reduce t'$}
-	\RightLabel{\textsc{E-Succ}}
-	\UIC{$\suc{t}\reduce\suc{t'}$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$t\reduce t'$}
-	\RightLabel{\textsc{E-Pred}}
-	\UIC{$\prd{t}\reduce\prd{t'}$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{$t\reduce t'$}
-	\RightLabel{\textsc{E-IsZero}}
-	\UIC{$\iszero{t}\reduce\iszero{t'}$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-Pred-Zero}}
-	\UIC{$\prd 0\reduce 0$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-Pred-Succ}}
-	\UIC{$\prd{\suc t}\reduce t$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-IsZero-Zero}}
-	\UIC{$\iszero 0\reduce\true$}
-\end{prooftree}
-
-\begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-IsZero-Succ}}
-	\UIC{$\iszero{\suc t}\reduce\false$}
-\end{prooftree}
+\begin{figure}[H]
+	\centering
+	\begin{prooftree}
+		\AXC{$t_1\reduce t_1'$}
+		\RightLabel{\textsc{E-If-Eval}}
+		\UIC{$\cond{t_1}{t_2}{t_3}\reduce\cond{t_1'}{t_2}{t_3}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-If-True}}
+		\UIC{$\cond{\true}{t_2}{t_3}\reduce t_2$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-If-False}}
+		\UIC{$\cond{\false}{t_2}{t_3}\reduce t_3$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t_1\reduce t_1'$}
+		\RightLabel{\textsc{E-Unit-Elim-Eval}}
+		\UIC{$\une{t_1}{t_2}\reduce\une{t_1'}{t_2}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-Unit-Elim}}
+		\UIC{$\une{\unt}{t}\reduce t$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t\reduce t'$}
+		\RightLabel{\textsc{E-Succ}}
+		\UIC{$\suc{t}\reduce\suc{t'}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t\reduce t'$}
+		\RightLabel{\textsc{E-Pred}}
+		\UIC{$\prd{t}\reduce\prd{t'}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t\reduce t'$}
+		\RightLabel{\textsc{E-IsZero}}
+		\UIC{$\iszero{t}\reduce\iszero{t'}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-Pred-Zero}}
+		\UIC{$\prd 0\reduce 0$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-Pred-Succ}}
+		\UIC{$\prd{\suc t}\reduce t$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-IsZero-Zero}}
+		\UIC{$\iszero 0\reduce\true$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-IsZero-Succ}}
+		\UIC{$\iszero{\suc t}\reduce\false$}
+	\end{prooftree}
+	\caption{Evaluation Rules for Built-in Booleans, Integers, etc.}
+\end{figure}
 
 \subsection{Graded Modality}
 
@@ -415,7 +448,35 @@ We then state the type safety lemma as follows:
 
 \subsection{Fundamental Theorems and Noninterference}
 
-Our definition of type semantics by building a logical relation model following the work of Rajani et al. \cite{rajani2018types}. The key difference between our approach and the work of Rajani et al. is that our calculus use a coeffect-based analysis instead of effect-based analysis.
+Our definition of type semantics by building a logical relation model following the work of Rajani et al. \cite{rajani2018types}. The key difference between our approach and the work of Rajani et al. is that our calculus use a coeffect-based analysis instead of effect-based analysis. 
+
+We first define a type-indexed unary relation $\llbracket T\rrbracket_\calv$ which captures the set of irreducible terms that inhabit type $T$. The relation is formally defined as a set of mutually inductive definitions:
+
+\begin{figure}[H]
+	\centering
+	$$
+	\begin{aligned}
+		\llbracket T\rrbracket_\calv &= \{t\mid t\rightsquigarrow^* v\implies v\in[A]_\calv\}\\
+		\llbracket\untt\rrbracket_\calv &= \{ \unt \} \\
+		\llbracket\bool\rrbracket_\calv &= \{\true, \false\} \\
+		\llbracket\nat\rrbracket_\calv &= \{n \mid n \in \mathbb{N}\} \\
+		\llbracket T_1\to^\ell T_2 \rrbracket_\calv &= \{\lambda x.t \mid \forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad[x\mapsto v]t\in\llbracket T_2\rrbracket_\cale\} \\
+		\llbracket\gradedt{\ell}{T}\rrbracket_\calv &= \{[t] \mid t\rightsquigarrow^* v\implies v \in \llbracket T \rrbracket_\cale\}\\
+		\llbracket\Gamma\rrbracket&=\{\gamma\mid x:[T]_\ell\wedge[\gamma(x)]\in \llbracket\gradedt{\ell}{T}\rrbracket_\cale\}
+	\end{aligned}
+	$$
+	\caption{Unary value, expression, and context relations}
+\end{figure}
+
+For the function type $T_1\to^\ell T_2$, the value inhabiting its interpretation are abstractions $\lambda x.t$ where the substitution of value $v$ into the body $t$ is in the interpretation of the expression relation at the result type. The interpretation of the graded modal type $\gradedt{\ell}{T}$ is the set of values which are the promotions of terms in the interpretation $T$. Finally, the $\llbracket\Gamma\rrbracket$ relation defines an interpretation of the context $\Gamma$ as a set of maps from variables to expressions (denoted by $\gamma$) that can be substituted for each variable.
+
+We also define a binary relation which captures \emph{indistinguishability} from the perspective of an adversary level $adv\in\secure$. The relation is formally defined by the following figure:
+
+\begin{figure}[H]
+	\centering
+	
+	\caption{Binary value, expression, and context relations}
+\end{figure}
 
 \section{Bidirectional Type Checking Algorithm}
 
@@ -798,46 +859,14 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \end{proof}
 
 \subsubsection{Well-typed substitution}
-We state several technical lemmas without proof:
-\begin{lemma}[Restriction Collapse]
-	For two typing contexts $\Gamma_1$ and $\Gamma_2$, we have
-	$$
-	\Gamma_{1|\Gamma_2}+\Gamma_{2|\overline{\Gamma_2}}=\Gamma_1
-	$$
-\end{lemma}
-\begin{lemma}[Context Shuffle 1]
-	For typing contexts $\Gamma_1$, $\Gamma_1'$, and $\Gamma_2$, variable $x$ and type $T$, we have
-	$$
-	(\Gamma_1,x:T,\Gamma_1')+\Gamma_2=(\Gamma_1+\Gamma_{2|\Gamma_1}),x:T,(\Gamma_1'+\Gamma_{2|\overline{\Gamma_1}})
-	$$
-\end{lemma}
-\begin{lemma}[Context Shuffle 2]
-	For typing contexts $\Gamma_1$, $\Gamma_2$, and $\Gamma_2'$, variable $x$ and type $T$, we have
-	$$
-	\Gamma_1+(\Gamma_2,x:T,\Gamma_2')=(\Gamma_{1|\Gamma_2}),x:T,(\Gamma_1'+\Gamma_{2|\overline{\Gamma_1}})
-	$$
-\end{lemma}
-\begin{lemma}[Context Shuffle 3]
-	
-\end{lemma}
-\begin{lemma}[Distribution of Scalar Multiplication over Context Concatenation]
-	For typing context $\Gamma$ and two security levels $\ell_1,\ell_2\in\secure$, we have
-	$$
-	(\ell_1\cdot\Gamma)+(\ell_2\cdot\Gamma)=(\ell_1+\ell_2)\cdot\Gamma
-	$$
-\end{lemma}
-\begin{lemma}
-	
-\end{lemma}
 \begin{proof}
-	By induction on a derivation of the form $\Gamma,x:S\vdash t:T$. For a given derivation, we proceed by cases on the final typing rule used in the proof.
+	By induction on a derivation of the form $\Gamma,x:[T_1]_\ell\vdash t_2:T_2$. For a given derivation, we proceed by cases on the final typing rule used in the proof.
 	\begin{itemize}		
-		\item\textbf{Case} \textsc{T-Var}: $t=z$ with $z:T\in(\Gamma,x:S)$
+		\item\textbf{Case} \textsc{T-Var}: $t_2=z$ with $z:T_1\in(\Gamma,x:[T_1]_\ell)$
 		
 		We need to consider two subcases: 
 		\begin{enumerate}
-			\item if $z=x$, then $[x\mapsto s]z\to[x\mapsto s]x\to s$. So we need to show $\Gamma+\Delta\vdash s:S$. To get this first we apply the \textsc{T-Weak} rule to the assumption $\Delta\vdash s:S$,
-			\item otherwise $[x\mapsto s]z\to z$, and the result is immediate.
+			\item if $z=x$, then $[x\mapsto t_1]z=t_1$, 
 		\end{enumerate}	
 		
 		\item\textbf{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
