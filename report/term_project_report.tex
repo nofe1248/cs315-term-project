@@ -99,22 +99,24 @@ However, existing IFC type systems can be rather inflexible or coarse-grained. M
 
 The \textsc{FlowSTLC} is a graded extension to the simply typed lambda-calculus resembling the Fuzz type system of Reed et al. \cite{reeddistance}. It is also similar to coeffect calculi of Brunel et al. \cite{brunel2014core} and Gaboardi et al. \cite{gaboardi2016combining}.
 
-The syntax of \textsc{FlowSTLC} is a straightforward extension of STLC with two additional constructs for introducing and eliminating the graded necessity type $\gradedt{\ell}{T}$. We also add built-in boolean, natural numbers, and unit type to it:
+The syntax of \textsc{FlowSTLC} is a straightforward extension of STLC with two additional constructs for introducing and eliminating the graded necessity type $\gradedt{\ell}{T}$. We also add records, built-in boolean, natural numbers, and unit type to it:
 
 \begin{figure}[H]
 	\centering
 	$$
 	\begin{aligned}
 		\textsf{Term}\;t\;&::=&\;x\;|\;t\; t\;|\;\lambda x.t\;|\;[t]\;|\;\textbf{let }[x]=t\textbf{ in }t\\
+		&&\{l_i=t_i^{i\in1..n}\}\;|\;t.l\\
 		&&\true\;|\;\false\;|\;\cond{t}{t}{t}\;|\; n\\
 		&&\iszero{t}\;|\;\unt\;|\;\une{t}{t}\\
-		\textsf{Type}\;T\;&::=&\;T\to^\ell T\;|\;\square_r T\;|\;\untt\;|\;\bool\;|\;\nat\\
+		\textsf{Type}\;T\;&::=&\;T\to^\ell T\;|\;\square_r T\\
+		&&\{l_i:T_i^{i\in1..n}\}\;|\;\untt\;|\;\bool\;|\;\nat\\
 	\end{aligned}
 	$$
 	\caption{Syntax of \textsc{FlowSTLC}}
 \end{figure}
 
-The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The function type $T\to^\ell T$ records how will the function use its argument by a grade $\ell$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\public\sqsubseteq\secret$. The built-in booleans, natural numbers, and unit types are easy and well-studied extensions, and we will omit the explanation of these constructs here.
+The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The function type $T\to^\ell T$ records how will the function use its argument by a grade $\ell$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\public\sqsubseteq\secret$. The records, projectinos, built-in booleans, natural numbers, and unit types are easy and well-studied extensions, and we will omit the explanation of these constructs here.
 
 Typing judgements are of the regular form $\Gamma\vdash t:T$ with the typing contexts of the form:
 $$
@@ -177,6 +179,24 @@ The next three rules build the structure of the security label semiring:
 \end{figure}
 
 The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix A.3}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to "loosen" the requirement if $\ell_2\sqsubseteq\ell_1$.
+
+The rules for record and projection are based on the book of Pierce and Benjamin \cite{pierce2002types}. Since \textsc{FlowSTLC} has a simply-typed base, there are no subtyping rules for record types:
+
+\begin{figure}[H]
+	\centering
+	\begin{prooftree}
+		\AXC{for each $i$, $\Gamma\vdash t_i:T_i$}
+		\RightLabel{\textsc{T-Record}}
+		\UIC{$\Gamma\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$\Gamma\vdash t:\{l_i:T_i^{i\in 1..n}\}$}
+		\RightLabel{\textsc{T-Proj}}
+		\UIC{$\Gamma\vdash t.l_i:T_i$}
+	\end{prooftree}
+	\caption{Record Rules in \textsc{FlowSTLC}}
+\end{figure}
 
 The remaining rules specify the types of booleans, natural numbers, unit values, and conditionals, etc.
 
@@ -279,7 +299,26 @@ The call-by-value reduction relation $t\to t'$ is then defined as follows:
 	\end{prooftree}
 	
 	\begin{prooftree}
-		\AXC{$t_2\reduce t_2'$}
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-ProjRecord}}
+		\UIC{$\{l_i=v_i^{i\in1..n}\}.l_j\reduce v_j$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t\reduce t'$}
+		\RightLabel{\textsc{E-Proj}}
+		\UIC{$t.l\reduce t'.l$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t_j\reduce t_j'$}
+		\RightLabel{\textsc{E-Record}}
+		\UIC{$\begin{aligned}
+				&\{l_i=v_i^{i\in1..j-1},l_j=t_j,l_k=t_k^{k\in j+1..n}\}\\
+				&\reduce\{l_i=v_i^{i\in1..j-1},l_j=t_j',l_k=t_k^{k\in j+1..n}\}
+			\end{aligned}$}
+	\end{prooftree}	\AXC{$t_2\reduce t_2'$}
 		\RightLabel{\textsc{E-App2}}
 		\UIC{$v_1\; t_2\reduce v_1\; t_2'$}
 	\end{prooftree}
@@ -308,6 +347,33 @@ The call-by-value reduction relation $t\to t'$ is then defined as follows:
 		\UIC{$\unp{x}{[v]}{t}\reduce [x\mapsto v]t$}
 	\end{prooftree}
 	\caption{Core Evaluation Rules of \textsc{FlowSTLC}}
+\end{figure}
+
+The operational semantics of record and projection are specified in a standard call-by-value style:
+
+\begin{figure}[H]
+	\centering
+	\begin{prooftree}
+		\AXC{}
+		\RightLabel{\textsc{E-ProjRecord}}
+		\UIC{$\{l_i=v_i^{i\in1..n}\}.l_j\reduce v_j$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t\reduce t'$}
+		\RightLabel{\textsc{E-Proj}}
+		\UIC{$t.l\reduce t'.l$}
+	\end{prooftree}
+	
+	\begin{prooftree}
+		\AXC{$t_j\reduce t_j'$}
+		\RightLabel{\textsc{E-Record}}
+		\UIC{$\begin{aligned}
+				&\{l_i=v_i^{i\in1..j-1},l_j=t_j,l_k=t_k^{k\in j+1..n}\}\\
+				&\reduce\{l_i=v_i^{i\in1..j-1},l_j=t_j',l_k=t_k^{k\in j+1..n}\}
+			\end{aligned}$}
+	\end{prooftree}
+	\caption{Evaluation Rules for Record and Projection}
 \end{figure}
 
 The operational behavior of primitive values, functions, and conditionals is then specified in a intuitive manner:
@@ -446,7 +512,7 @@ We then state the type safety lemma as follows:
 	If $t$ is a closed and well-typed \text{FlowSTLC} term, then $t$ is normalizable.
 \end{theorem}
 
-\subsection{Fundamental Theorems and Noninterference}
+\section{Fundamental Theorems and Noninterference}
 
 Our definition of type semantics by building a logical relation model following the work of Rajani et al. \cite{rajani2018types}. The key difference between our approach and the work of Rajani et al. is that our calculus use a coeffect-based analysis instead of effect-based analysis. 
 
@@ -456,13 +522,13 @@ We first define a type-indexed unary relation $\llbracket T\rrbracket_\calv$ whi
 	\centering
 	$$
 	\begin{aligned}
-		\llbracket T\rrbracket_\calv &= \{t\mid t\rightsquigarrow^* v\implies v\in[A]_\calv\}\\
+		\llbracket T\rrbracket_\cale &= \{t\mid t\rightsquigarrow^* v\implies v\in\llbracket T\rrbracket_\calv\}\\
 		\llbracket\untt\rrbracket_\calv &= \{ \unt \} \\
 		\llbracket\bool\rrbracket_\calv &= \{\true, \false\} \\
 		\llbracket\nat\rrbracket_\calv &= \{n \mid n \in \mathbb{N}\} \\
 		\llbracket T_1\to^\ell T_2 \rrbracket_\calv &= \{\lambda x.t \mid \forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad[x\mapsto v]t\in\llbracket T_2\rrbracket_\cale\} \\
 		\llbracket\gradedt{\ell}{T}\rrbracket_\calv &= \{[t] \mid t\rightsquigarrow^* v\implies v \in \llbracket T \rrbracket_\cale\}\\
-		\llbracket\Gamma\rrbracket&=\{\gamma\mid x:[T]_\ell\wedge[\gamma(x)]\in \llbracket\gradedt{\ell}{T}\rrbracket_\cale\}
+		\llbracket\Gamma\rrbracket&=\{\gamma\mid x:[T]_\ell\in\Gamma\wedge[\gamma(x)]\in \llbracket\gradedt{\ell}{T}\rrbracket_\cale\}
 	\end{aligned}
 	$$
 	\caption{Unary value, expression, and context relations}
@@ -474,9 +540,32 @@ We also define a binary relation which captures \emph{indistinguishability} from
 
 \begin{figure}[H]
 	\centering
-	
+	$$
+	\begin{aligned}
+		\llbracket T\rrbracket^{adv}_\cale &= \{(t_1,t_2)\mid t_1\rightsquigarrow^* v_1\wedge t_2\rightsquigarrow^* v_2\implies\\
+		&\qquad\qquad (v_1,v_2)\in\llbracket T\rrbracket^{adv}_\calv\}\\
+		\llbracket\untt\rrbracket^{adv}_\calv &= \{(\unt,\unt)\}\\
+		\llbracket\bool\rrbracket^{adv}_\calv &= \{(b,b)\mid b\in\{\true,\false\}\}\\
+		\llbracket\nat\rrbracket^{adv}_\calv &= \{(n,n)\mid n\in\mathbb N\}\\
+		\llbracket T_1\to^\ell T_2\rrbracket^{adv}_\calv &=
+		\{(\lambda x.t_1,\lambda x.t_2)\mid (\forall v,v'.([v],[v'])\in\llbracket \gradedt{\ell}{T_1}\rrbracket^{adv}_\cale\\
+		&\qquad\implies ((x\mapsto v)t_1,(x\mapsto v')t_2)\in\llbracket T_2\rrbracket^{adv}_\cale)\\
+		&\qquad\wedge(\forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_1\in\llbracket T_2\rrbracket_\cale)\\
+		&\qquad\wedge(\forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_2\in\llbracket T_2\rrbracket_\cale)\}\\
+		\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\calv &= \left\{\begin{aligned}
+			&\{([v_1,v_2])\mid (v_1,v_2)\in\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\cale\}\\&\quad\ell\le adv\\
+			&\{([v_1,v_2])\mid v_1\in\llbracket\gradedt{\ell}{T}\rrbracket_\cale\wedge v_2\in\llbracket\gradedt{\ell}{T}\rrbracket_\cale\}\\&\quad\neg\ell\le adv
+		\end{aligned}\right.\\
+		\llbracket\Gamma\rrbracket^{adv}&=\{(\gamma_1,\gamma_2)\mid x:[T]_\ell\in\Gamma\\
+		&\qquad\wedge[\gamma_1(x),\gamma_2(x)]\in\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\cale\}
+	\end{aligned}
+	$$
 	\caption{Binary value, expression, and context relations}
 \end{figure}
+
+The binary relation specified here only capture the concept \emph{termination-insensitive noninterference} \cite{volpano1996sound}, since we are only interested in the relation of the evaluation results. To make it termination sensitve, we need to also prove the co-termination of the two terms in the binary relation. Given the limited time for this project, we leave this as a future work direction.
+
+For the interpretation of the function type $T_1\to^\ell T_2$, the binary relation relates two abstractions where when two arbitrary values of $\gradedt{\ell}{T_1}$ are substituted into their bodies, the substitution results would relate at the result type $T_2$. The most important interpretation here is the one for the graded type $\gradedt{\ell}{T}$. For the graded types, if the graded $\ell$ is less or equal to the adversary level $adv$, then $t_1$ and $t_2$ must be related at the type $T$. Otherwise, $t_1$ and $t_2$ only need to be in their corresponding unary value interpretation and thus cannot be distinguished. This precisely captures the intuition that a low level adversary (i.e. $adv=\public$) cannot distinguish two secret values (i.e. $\ell=\secret$). Finally, the interpretation of contexts $\llbracket\Gamma\rrbracket^{adv}$ reuses the interpretation for graded types to capture the grading.
 
 \section{Bidirectional Type Checking Algorithm}
 
@@ -526,6 +615,8 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 		| $\lam{x}{t}$ : \textit{abstraction}
 		| $[t]$ : \textit{packing}
 		| $\unp{x}{t\colon T}{t}$ : \textit{unpacking}
+		| $\{l_i=t_i^{i\in1..n}\}$ : \textit{record}
+		| $t.l$ : \textit{projection}
 		| $\true$ : \textit{true constant}
 		| $\false$ : \textit{false constant}
 		| $\cond{t}{t}{t}$ : \textit{conditional}
@@ -543,11 +634,13 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 		| \untt : \textit{unit type}
 		| \nat : \textit{natural number type}
 		| \bool : \textit{boolean type}
+		| $\{l_i\colon T_i^{i\in1..n}\}$ : \textit{record type}
 		| $T\to^\ell T$ : \textit{function type}
 		| $\gradedt{r}{T}$ : \textit{graded modality}
 		;;
 		$v$ : \textsf{Value} ::=
 		| $\lam{x\colon T}{t}$ : \textit{abstraction value}
+		| $\{l_i=v_i^{i\in1..n}\}$ : \textit{record value}
 		| $n$ : \textit{natural number value}
 		| $\true$ : \textit{true value}
 		| $\false$ : \textit{false value}
@@ -637,6 +730,18 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	\AXC{$\ell_2\sqsubseteq\ell_1$}
 	\RightLabel{\textsc{T-Approx}}
 	\BIC{$\Gamma,x:[T_2]_{\ell_2}\vdash t:T_1$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{for each $i$, $\Gamma\vdash t_i:T_i$}
+	\RightLabel{\textsc{T-Record}}
+	\UIC{$\Gamma\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$\Gamma\vdash t:\{l_i:T_i^{i\in 1..n}\}$}
+	\RightLabel{\textsc{T-Proj}}
+	\UIC{$\Gamma\vdash t.l_i:T_i$}
 \end{prooftree}
 
 \begin{prooftree}
@@ -734,6 +839,27 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	\AXC{}
 	\RightLabel{\textsc{E-Let-Unbox}}
 	\UIC{$\unp{x}{[v]}{t}\reduce [x\mapsto v]t$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{}
+	\RightLabel{\textsc{E-ProjRecord}}
+	\UIC{$\{l_i=v_i^{i\in1..n}\}.l_j\reduce v_j$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t\reduce t'$}
+	\RightLabel{\textsc{E-Proj}}
+	\UIC{$t.l\reduce t'.l$}
+\end{prooftree}
+
+\begin{prooftree}
+	\AXC{$t_j\reduce t_j'$}
+	\RightLabel{\textsc{E-Record}}
+	\UIC{$\begin{aligned}
+			&\{l_i=v_i^{i\in1..j-1},l_j=t_j,l_k=t_k^{k\in j+1..n}\}\\
+			&\reduce\{l_i=v_i^{i\in1..j-1},l_j=t_j',l_k=t_k^{k\in j+1..n}\}
+	\end{aligned}$}
 \end{prooftree}
 
 \begin{prooftree}

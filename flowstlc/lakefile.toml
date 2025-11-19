@@ -13,5 +13,10 @@ maxSynthPendingDepth = 3
 name = "mathlib"
 scope = "leanprover-community"
 
+[[require]]
+name = "std"
+git = "https://github.com/leanprover/std4"
+rev = "main"
+
 [[lean_lib]]
 name = "Flowstlc"

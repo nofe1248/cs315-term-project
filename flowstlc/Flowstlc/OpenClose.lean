@@ -60,8 +60,7 @@ lemma open_var_fv (t u : Trm) :
     intro k
     simpa [opening, fv] using ih (k + 1)
   | app t1 t2 ih1 ih2 =>
-    intro k
-    intro a ha
+    intro k a ha
     have hmem : a ∈ fv (opening k u t1) ∨ a ∈ fv (opening k u t2) := by
       simpa [opening, fv] using ha
     have : a ∈ (fv t1 ∪ fv t2) ∪ fv u := by
@@ -81,81 +80,60 @@ lemma open_var_fv (t u : Trm) :
     intro k
     simpa [opening, fv] using ih k
   | box_elim y t1 t2 ih1 ih2 =>
-    intro k
-    match u with
-    | Trm.fvar x =>
+    intro k a ha
+    have finish
+      (hmem : a ∈ fv (opening k u t1)
+        ∨ (a ∈ fv (opening k u t2) ∧ a ≠ y)) :
+      a ∈ (fv t1 ∪ ((fv t2) \ {y})) ∪ fv u := by
+      cases hmem with
+      | inl h1 =>
+        have h1' := ih1 k h1
+        rcases Finset.mem_union.mp h1' with h1t | h1u
+        · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl h1t)))
+        · exact Finset.mem_union.mpr (Or.inr h1u)
+      | inr h2 =>
+        have h2' := ih2 k h2.left
+        rcases Finset.mem_union.mp h2' with h2t | h2u
+        · have : a ∈ (fv t2) \ {y} :=
+            Finset.mem_sdiff.mpr
+            ⟨h2t, by simpa [Finset.mem_singleton] using h2.right⟩
+          exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inr this)))
+        · exact Finset.mem_union.mpr (Or.inr h2u)
+    cases h_u : u with
+    | fvar x =>
       by_cases hxy : y = x
-      · intro a ha
-        have hmem : a ∈ fv (opening k ($ x) t1) ∨ (a ∈ fv t2 ∧ a ≠ y) := by
-          simpa [opening, fv, hxy]
-          using ha
+      · have hmem : a ∈ fv (opening k ($ x) t1)
+          ∨ (a ∈ fv t2 ∧ a ≠ y) := by
+          simpa [opening, fv, hxy, h_u] using ha
         have : a ∈ (fv t1 ∪ ((fv t2) \ {y})) ∪ {x} := by
           cases hmem with
           | inl h1 =>
+            rw [← h_u] at h1
             have h1' := ih1 k h1
             rcases Finset.mem_union.mp h1' with h1t | h1u
             · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl h1t)))
-            · exact Finset.mem_union.mpr (Or.inr h1u)
+            · rw [h_u] at h1u
+              exact Finset.mem_union.mpr (Or.inr h1u)
           | inr h2 =>
             have : a ∈ (fv t2) \ {y} :=
-            Finset.mem_sdiff.mpr
-              ⟨h2.left, by simpa [Finset.mem_singleton] using h2.right⟩
+              Finset.mem_sdiff.mpr
+                ⟨h2.left, by simpa [Finset.mem_singleton] using h2.right⟩
             exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inr this)))
-        simpa [fv]
-      · intro a ha
-        have hmem : a ∈ fv (opening k ($ x) t1)
+        simpa [fv, h_u]
+      · have hmem : a ∈ fv (opening k ($ x) t1)
           ∨ (a ∈ fv (opening k ($ x) t2) ∧ a ≠ y) := by
-          simpa [opening, fv, hxy] using ha
-        have : a ∈ (fv t1 ∪ ((fv t2) \ {y})) ∪ {x} := by
-          cases hmem with
-          | inl h1 =>
-            have h1' := ih1 k h1
-            rcases Finset.mem_union.mp h1' with h1t | h1u
-            · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl h1t)))
-            · exact Finset.mem_union.mpr (Or.inr h1u)
-          | inr h2 =>
-            have h2' := ih2 k h2.left
-            rcases Finset.mem_union.mp h2' with h2t | h2u
-            · have : a ∈ (fv t2) \ {y} :=
-                Finset.mem_sdiff.mpr
-                  ⟨h2t, by simpa [Finset.mem_singleton] using h2.right⟩
-              exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inr this)))
-            · exact Finset.mem_union.mpr (Or.inr h2u)
-        simpa [fv]
-    | u' =>
-      intro a ha
-      have hmem : a ∈ fv (opening k u' t1)
-        ∨ (a ∈ fv (opening k u' t2) ∧ a ≠ y) := by
-          simp at ha
-          cases u' with
-          | fvar x' =>
-              by_cases hxy : y = x'
-              · simp [fv, hxy] at ha
-                sorry
-              · simp [fv, hxy] at ha
-                exact ha
-          | _ =>
-              simp [fv] at ha
-              exact ha
-      have : a ∈ (fv t1 ∪ ((fv t2) \ {y})) ∪ fv u' := by
-        cases hmem with
-        | inl h1 =>
-          have h1' := ih1 k h1
-          rcases Finset.mem_union.mp h1' with h1t | h1u
-          · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl h1t)))
-          · exact Finset.mem_union.mpr (Or.inr h1u)
-        | inr h2 =>
-          have h2' := ih2 k h2.left
-          rcases Finset.mem_union.mp h2' with h2t | h2u
-          · have : a ∈ (fv t2) \ {y} :=
-            Finset.mem_sdiff.mpr
-              ⟨h2t, by simpa [Finset.mem_singleton] using h2.right⟩
-            exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inr this)))
-          · exact Finset.mem_union.mpr (Or.inr h2u)
-      simpa [fv]
+          simpa [opening, fv, hxy, h_u] using ha
+        rw [← h_u] at hmem
+        have := finish hmem
+        simpa [fv, h_u]
+    | _ =>
+      have hmem : a ∈ fv (opening k u t1)
+          ∨ (a ∈ fv (opening k u t2) ∧ a ≠ y) := by
+          simpa [opening, fv, h_u] using ha
+      have := finish hmem
+      simpa [fv, h_u]
   | cond t1 t2 t3 ih1 ih2 ih3 =>
-    intro k
-    intro a ha
+    intro k a ha
     have hmem : a ∈ fv (opening k u t1)
       ∨ a ∈ fv (opening k u t2) ∨ a ∈ fv (opening k u t3) := by
       simpa [opening, fv]
@@ -199,8 +177,7 @@ lemma open_var_fv (t u : Trm) :
     intro _
     simp [opening, fv]
   | unit_elim t1 t2 ih1 ih2 =>
-    intro k
-    intro a ha
+    intro k a ha
     have hmem : a ∈ fv (opening k u t1) ∨ a ∈ fv (opening k u t2) := by
       simpa [opening, fv] using ha
     have : a ∈ (fv t1 ∪ fv t2) ∪ fv u := by
