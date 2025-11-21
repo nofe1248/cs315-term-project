@@ -57,7 +57,6 @@ public class Main {
                 printer.print(unann);
             }
 
-
             TypeChecker checker = new TypeChecker();
             checker.checkProgram(program, ns.getString("entry_point"));
         } catch (TypeError t) {
