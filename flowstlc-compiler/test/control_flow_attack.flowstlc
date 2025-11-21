@@ -1,10 +1,8 @@
-val ten : Int = 10
+fun secure_not_leak : Bool^Sec -> Bool
+fun secure_not_leak n = if n then false else true
 
-fun inc : Int^Pub -> Int
-fun inc x = x + 1
+fun secure_not : Bool^Sec -> Bool [Sec]
+fun secure_not_leak n = [(if n then false else true)]
 
-fun applyTwice : Int^Pub -> Int^Pub -> Int
-fun applyTwice f x = f (f x)
-
-fun main : Unit^Pub -> Int
-fun main = applyTwice inc ten
+fun public_not : Bool^Pub -> Bool
+fun public_not n = if n then false else true
