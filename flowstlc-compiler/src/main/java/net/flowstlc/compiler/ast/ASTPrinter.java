@@ -2,6 +2,7 @@ package net.flowstlc.compiler.ast;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
 
 public final class ASTPrinter extends BaseASTVisitor<String> {
     private String indent = "";
@@ -110,6 +111,70 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
         sb.append(node("ModalityType"));
         sb.append(child("inner", type.getInner()));
         sb.append(value("level", String.valueOf(type.getLevel())));
+        return sb.toString();
+    }
+
+    @Override
+    public String visitRecordType(RecordType type) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(node("RecordType"));
+        String prev = indent;
+        sb.append(indent).append("  ").append("fields:").append(System.lineSeparator());
+        indent = prev + "    ";
+        Map<String, Type> fields = type.getFields();
+        if (fields == null || fields.isEmpty()) {
+            sb.append(indent).append("<empty>").append(System.lineSeparator());
+        } else {
+            for (Map.Entry<String, Type> entry : fields.entrySet()) {
+                sb.append(indent).append(entry.getKey()).append(":").append(System.lineSeparator());
+                String prev2 = indent;
+                indent = prev2 + "    ";
+                Type fieldType = entry.getValue();
+                if (fieldType != null) {
+                    sb.append(fieldType.accept(this));
+                } else {
+                    sb.append(indent).append("<null>").append(System.lineSeparator());
+                }
+                indent = prev2;
+            }
+        }
+        indent = prev;
+        return sb.toString();
+    }
+
+    @Override
+    public String visitRecordFieldAccessExpr(RecordFieldAccessExpr expr) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(node("RecordFieldAccessExpr field=" + expr.getFieldName()));
+        sb.append(child("record", expr.getRecordExpr()));
+        return sb.toString();
+    }
+
+    @Override
+    public String visitRecordExpr(RecordExpr expr) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(node("RecordExpr"));
+        String prev = indent;
+        sb.append(indent).append("  ").append("fields:").append(System.lineSeparator());
+        indent = prev + "    ";
+        Map<String, Expr> fields = expr.getFields();
+        if (fields == null || fields.isEmpty()) {
+            sb.append(indent).append("<empty>").append(System.lineSeparator());
+        } else {
+            for (Map.Entry<String, Expr> entry : fields.entrySet()) {
+                sb.append(indent).append(entry.getKey()).append(":").append(System.lineSeparator());
+                String prev2 = indent;
+                indent = prev2 + "    ";
+                Expr fieldExpr = entry.getValue();
+                if (fieldExpr != null) {
+                    sb.append(fieldExpr.accept(this));
+                } else {
+                    sb.append(indent).append("<null>").append(System.lineSeparator());
+                }
+                indent = prev2;
+            }
+        }
+        indent = prev;
         return sb.toString();
     }
 

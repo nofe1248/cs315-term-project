@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
@@ -244,6 +245,33 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         Expr thenBranch = (Expr) visit(ctx.simple_expression(1));
         Expr elseBranch = (Expr) visit(ctx.simple_expression(2));
         return new IfExpr(condition, thenBranch, elseBranch);
+    }
+
+    @Override
+    public Object visitRecordExpression(FlowSTLCParser.RecordExpressionContext ctx) {
+        Map<String, Expr> fields = ctx.record_expr_field().stream()
+                .collect(Collectors.toMap(
+                        fieldCtx -> fieldCtx.Identifier().getText(),
+                        fieldCtx -> (Expr) visit(fieldCtx.simple_expression())
+                ));
+        return new RecordExpr(fields);
+    }
+
+    @Override
+    public Object visitRecordFieldAccessExpression(FlowSTLCParser.RecordFieldAccessExpressionContext ctx) {
+        Expr recordExpr = (Expr) visit(ctx.simple_expression());
+        String fieldName = ctx.Identifier().getText();
+        return new RecordFieldAccessExpr(recordExpr, fieldName);
+    }
+
+    @Override
+    public Object visitRecordType(FlowSTLCParser.RecordTypeContext ctx) {
+        Map<String, Type> fields = ctx.record_type_field().stream()
+                .collect(Collectors.toMap(
+                        fieldCtx -> fieldCtx.Identifier().getText(),
+                        fieldCtx -> (Type) visit(fieldCtx.type())
+                ));
+        return new RecordType(fields);
     }
 
     @Override

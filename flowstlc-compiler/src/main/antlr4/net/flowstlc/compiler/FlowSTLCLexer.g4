@@ -66,6 +66,7 @@ MUL      : '*';
 DIV      : '/';
 MOD      : '%';
 ARROW    : '->';
+DOT      : '.';
 
 // Identifiers
 

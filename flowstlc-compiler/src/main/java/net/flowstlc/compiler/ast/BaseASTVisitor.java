@@ -76,6 +76,21 @@ public class BaseASTVisitor<R> implements ASTVisitor<R> {
     }
 
     @Override
+    public R visitRecordExpr(RecordExpr expr) {
+        return defaultResult();
+    }
+
+    @Override
+    public R visitRecordFieldAccessExpr(RecordFieldAccessExpr expr) {
+        return defaultResult();
+    }
+
+    @Override
+    public R visitRecordType(RecordType type) {
+        return defaultResult();
+    }
+
+    @Override
     public R visitUnannotatedFunctionType(UnannotatedFunctionType type) {
         return defaultResult();
     }

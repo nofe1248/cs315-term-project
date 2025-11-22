@@ -37,9 +37,14 @@ security_level
 ;
 
 type
-    : builtin_type                          #BuiltinType
-    | type LBRACK security_level RBRACK     #ModalityType
-    | type CARET security_level ARROW type  #FunctionType
+    : builtin_type                                  #BuiltinType
+    | type LBRACK security_level RBRACK             #ModalityType
+    | type CARET security_level ARROW type          #FunctionType
+    | LBRACE record_type_field (COMMA record_type_field)* COMMA? RBRACE  #RecordType
+;
+
+record_type_field :
+    Identifier COLON type
 ;
 
 builtin_type
@@ -50,7 +55,7 @@ builtin_type
 
 expr
     : simple_expression                                                                 #SimpleExpression
-    | KW_LET Identifier ASSIGN LBRACK simple_expression RBRACK KW_IN simple_expression  #LetExpression
+    | KW_LET LBRACK Identifier RBRACK ASSIGN simple_expression KW_IN simple_expression  #LetExpression
     | Identifier simple_expression+                                                     #FunctionCall
     | KW_IF simple_expression KW_THEN simple_expression KW_ELSE simple_expression       #IfExpression
 ;
@@ -79,6 +84,12 @@ simple_expression
     | KW_NOT simple_expression                                                          #NotExpression
     | SUB simple_expression                                                             #NegateExpression
     | LBRACK simple_expression RBRACK                                                   #ModalityExpression
+    | LBRACE record_expr_field (COMMA record_expr_field)* COMMA? RBRACE                 #RecordExpression
+    | simple_expression DOT Identifier                                                  #RecordFieldAccessExpression
+;
+
+record_expr_field :
+    Identifier ASSIGN simple_expression
 ;
 
 literal
