@@ -1,0 +1,4 @@
+fun main : Unit^Pub -> Int
+fun main =
+  let [r] = ({a = false, b = 7}) in
+  (if r.a then r.b + 1 else r.b - 1)

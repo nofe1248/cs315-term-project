@@ -1,0 +1,7 @@
+fun flip : {a: Bool, b: Int}^Pub -> {a: Bool, b: Int}
+fun flip r = {a = not r.a, b = r.b + 1}
+
+fun main : Unit^Pub -> Int
+fun main =
+  let [r2] = (flip {a = true, b = 9}) in
+  (if r2.a then r2.b else 0)
