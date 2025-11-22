@@ -1,12 +1,15 @@
-package net.flowstlc.compiler;
+package net.flowstlc.compiler.typechecker;
 
 import net.flowstlc.compiler.ast.*;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static net.flowstlc.compiler.SecurityOps.leq;
+import static net.flowstlc.compiler.typechecker.SecurityOps.leq;
 
 public final class TypeChecker extends BaseASTVisitor<Type> {
     private final Map<String, FunctionType> functionTypes = new HashMap<>();
@@ -133,7 +136,7 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
         String name = expr.getName();
         TypeEnv.VarBinding binding = env.lookupVar(name);
         if (binding != null) {
-            if (!leq(requiredGrade, binding.grade)) {
+            if (!leq(binding.grade, requiredGrade)) {
                 throw new TypeError("Using variable '" + name + "' at grade " + requiredGrade
                         + " requires grade " + binding.grade);
             }
@@ -247,6 +250,31 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
         return current;
     }
 
+    @Override
+    public Type visitRecordExpr(RecordExpr expr) {
+        Map<String, Type> typedFields = new HashMap<>();
+        for (Map.Entry<String, Expr> entry : expr.getFields().entrySet()) {
+            String fieldName = entry.getKey();
+            if (typedFields.containsKey(fieldName)) {
+                throw new TypeError("Record literal duplicates field '" + fieldName + "'");
+            }
+            Type fieldType = checkExpr(entry.getValue(), env, requiredGrade);
+            typedFields.put(fieldName, fieldType);
+        }
+        return new RecordType(normalizeRecordFields(typedFields));
+    }
+
+    @Override
+    public Type visitRecordFieldAccessExpr(RecordFieldAccessExpr expr) {
+        Type recordType = checkExpr(expr.getRecordExpr(), env, requiredGrade);
+        RecordType resolved = requireRecordType(recordType, "record field access");
+        Type fieldType = resolved.getFieldType(expr.getFieldName());
+        if (fieldType == null) {
+            throw new TypeError("Record type " + showType(recordType) + " has no field '" + expr.getFieldName() + "'");
+        }
+        return fieldType;
+    }
+
     // ==================== Type utilities ====================
 
     @Override
@@ -261,6 +289,11 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
 
     @Override
     public Type visitModalityType(ModalityType type) {
+        return type;
+    }
+
+    @Override
+    public Type visitRecordType(RecordType type) {
         return type;
     }
 
@@ -296,6 +329,13 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
         }
     }
 
+    private RecordType requireRecordType(Type type, String what) {
+        if (!(type instanceof RecordType rt)) {
+            throw new TypeError(what + " requires a record type, got " + showType(type));
+        }
+        return rt;
+    }
+
     private boolean typeEquals(Type a, Type b) {
         if (a == b) return true;
         if (a == null || b == null) return false;
@@ -312,10 +352,39 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
             return typeEquals(mtA.getInner(), mtB.getInner())
                     && mtA.getLevel() == mtB.getLevel();
         }
+        if (a instanceof RecordType rtA && b instanceof RecordType rtB) {
+            return recordFieldsEqual(rtA.getFields(), rtB.getFields());
+        }
         if (a instanceof UnannotatedFunctionType uA && b instanceof UnannotatedFunctionType uB) {
             return typeEquals(uA.getFrom(), uB.getFrom()) && typeEquals(uA.getTo(), uB.getTo());
         }
         return false;
+    }
+
+    private boolean recordFieldsEqual(Map<String, Type> fieldsA, Map<String, Type> fieldsB) {
+        if (fieldsA.size() != fieldsB.size()) {
+            return false;
+        }
+        for (Map.Entry<String, Type> entry : fieldsA.entrySet()) {
+            Type other = fieldsB.get(entry.getKey());
+            if (other == null || !typeEquals(entry.getValue(), other)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Map<String, Type> normalizeRecordFields(Map<String, Type> fields) {
+        if (fields.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<String> names = new ArrayList<>(fields.keySet());
+        Collections.sort(names);
+        Map<String, Type> normalized = new LinkedHashMap<>();
+        for (String name : names) {
+            normalized.put(name, fields.get(name));
+        }
+        return Collections.unmodifiableMap(normalized);
     }
 
     private String showType(Type t) {
@@ -327,6 +396,19 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
         }
         if (t instanceof ModalityType mt) {
             return showType(mt.getInner()) + " [" + mt.getLevel() + "]";
+        }
+        if (t instanceof RecordType rt) {
+            StringBuilder sb = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<String, Type> entry : rt.getFields().entrySet()) {
+                if (!first) {
+                    sb.append(", ");
+                }
+                sb.append(entry.getKey()).append(": ").append(showType(entry.getValue()));
+                first = false;
+            }
+            sb.append('}');
+            return sb.toString();
         }
         if (t instanceof UnannotatedFunctionType u) {
             return showType(u.getFrom()) + "->" + showType(u.getTo());

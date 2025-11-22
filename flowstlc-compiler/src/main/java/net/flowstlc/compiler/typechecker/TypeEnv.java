@@ -1,4 +1,4 @@
-package net.flowstlc.compiler;
+package net.flowstlc.compiler.typechecker;
 
 import net.flowstlc.compiler.ast.Type;
 import net.flowstlc.compiler.ast.SecurityLevel;

@@ -1,4 +1,4 @@
-fun record_test : {a: Bool, b: Int}^Pub -> Bool
+fun record_test : {a: Bool, b: Int}^Pub -> Int
 fun record_test n =
     if n.a then n.b + 1
     else n.b - 1
