@@ -1,12 +1,14 @@
 package net.flowstlc.compiler;
 
 import static net.sourceforge.argparse4j.impl.Arguments.storeTrue;
+
+import net.flowstlc.compiler.ast.ASTUnannotator;
+import net.flowstlc.compiler.ast.Program;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.*;
 
 import net.flowstlc.compiler.ast.ASTPrinter;
 
@@ -48,6 +50,11 @@ public class Main {
             if (ns.getBoolean("dump_ast")) {
                 ASTPrinter printer = new ASTPrinter();
                 printer.print(program);
+            }
+            if (ns.getBoolean("dump_unannotated_ast")) {
+                Program unann = new ASTUnannotator().unannotate(program);
+                ASTPrinter printer = new ASTPrinter();
+                printer.print(unann);
             }
 
             TypeChecker checker = new TypeChecker();
