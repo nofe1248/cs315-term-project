@@ -1,8 +1,7 @@
-val foo : Int = 42
-val bar : Bool = true
+val foo : Int [Pub] = [42]
 
 fun multiplyByTwo : Int^Pub -> Int
 fun multiplyByTwo n = n * 2
 
 fun main : Unit^Pub -> Int
-fun main = multiplyByTwo foo
+fun main = let [x] = foo in (multiplyByTwo x)

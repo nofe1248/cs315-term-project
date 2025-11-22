@@ -41,5 +41,17 @@ public final class TypeEnv {
     public Map<String, VarBinding> getVars() {
         return Collections.unmodifiableMap(vars);
     }
-}
 
+    public TypeEnv promoteAll(SecurityLevel by) {
+        if (by == null) {
+            return this;
+        }
+        Map<String, VarBinding> promoted = new HashMap<>();
+        for (Map.Entry<String, VarBinding> e : vars.entrySet()) {
+            VarBinding vb = e.getValue();
+            SecurityLevel newGrade = SecurityOps.times(vb.grade, by);
+            promoted.put(e.getKey(), new VarBinding(vb.type, newGrade));
+        }
+        return new TypeEnv(promoted);
+    }
+}

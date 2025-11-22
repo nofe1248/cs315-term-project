@@ -73,32 +73,32 @@ expr
 ;
 
 simple_expression
-    : literal                                                                           #LiteralExpression
-    | LPAREN expr RPAREN                                                                #ParenthesizedExpression
-    | Identifier                                                                        #IdentifierExpression
-    // Multiplicative operators (highest precedence)
-    | simple_expression MUL simple_expression                                           #MulExpression
-    | simple_expression DIV simple_expression                                           #DivExpression
-    | simple_expression MOD simple_expression                                           #ModExpression
+    : literal                                                                       #LiteralExpression
+    | LPAREN expr RPAREN                                                            #ParenthesizedExpression
+    | Identifier                                                                    #IdentifierExpression
+    | LBRACE record_expr_field (COMMA record_expr_field)* COMMA? RBRACE             #RecordExpression
+    | LBRACK simple_expression RBRACK                                               #ModalityExpression
+    | SUB simple_expression                                                         #NegateExpression
+    | simple_expression DOT Identifier                                              #RecordFieldAccessExpression
+    // Multiplicative operators
+    | simple_expression MUL simple_expression                                       #MulExpression
+    | simple_expression DIV simple_expression                                       #DivExpression
+    | simple_expression MOD simple_expression                                       #ModExpression
     // Additive operators
-    | simple_expression ADD simple_expression                                           #AddExpression
-    | simple_expression SUB simple_expression                                           #SubExpression
+    | simple_expression ADD simple_expression                                       #AddExpression
+    | simple_expression SUB simple_expression                                       #SubExpression
     // Comparison operators
-    | simple_expression LT simple_expression                                            #LessThanExpression
-    | simple_expression LE simple_expression                                            #LessThanOrEqualExpression
-    | simple_expression GT simple_expression                                            #GreaterThanExpression
-    | simple_expression GE simple_expression                                            #GreaterThanOrEqualExpression
-    | simple_expression EQUAL simple_expression                                         #EqualExpression
-    | simple_expression NOTEQUAL simple_expression                                      #NotEqualExpression
-    // Logical operators (lowest precedence)
-    | simple_expression KW_AND simple_expression                                        #AndExpression
-    | simple_expression KW_OR simple_expression                                         #OrExpression
-    | KW_NOT simple_expression                                                          #NotExpression
-    | SUB simple_expression                                                             #NegateExpression
-    | LBRACK simple_expression RBRACK                                                   #ModalityExpression
-    | LBRACE record_expr_field (COMMA record_expr_field)* COMMA? RBRACE                 #RecordExpression
-    | simple_expression DOT Identifier                                                  #RecordFieldAccessExpression
-;
+    | simple_expression LT simple_expression                                        #LessThanExpression
+    | simple_expression LE simple_expression                                        #LessThanOrEqualExpression
+    | simple_expression GT simple_expression                                        #GreaterThanExpression
+    | simple_expression GE simple_expression                                        #GreaterThanOrEqualExpression
+    | simple_expression EQUAL simple_expression                                     #EqualExpression
+    | simple_expression NOTEQUAL simple_expression                                  #NotEqualExpression
+    // Logical operators
+    | KW_NOT simple_expression                                                      #NotExpression
+    | simple_expression KW_AND simple_expression                                    #AndExpression
+    | simple_expression KW_OR simple_expression                                     #OrExpression
+    ;
 
 record_expr_field :
     Identifier ASSIGN simple_expression

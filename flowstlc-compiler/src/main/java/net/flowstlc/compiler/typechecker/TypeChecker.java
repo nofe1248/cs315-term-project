@@ -56,7 +56,7 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
 
     private void checkConstant(ConstantDeclaration cd) {
         Type expected = cd.getType();
-        Type actual = checkExpr(cd.getValue(), new TypeEnv(), SecurityLevel.SECRET);
+        Type actual = checkExprWithExpected(cd.getValue(), new TypeEnv(), SecurityLevel.SECRET, expected);
         if (!typeEquals(expected, actual)) {
             throw new TypeError(String.format("Constant '%s' has type %s but expected %s",
                     cd.getName(), showType(actual), showType(expected)));
@@ -102,11 +102,26 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
     }
 
     public Type checkExpr(Expr expr, TypeEnv env, SecurityLevel requiredGrade) {
+        return checkExprWithExpected(expr, env, requiredGrade, null);
+    }
+
+    private Type checkExprWithExpected(Expr expr, TypeEnv env, SecurityLevel requiredGrade, Type expected) {
         TypeEnv oldEnv = this.env;
         SecurityLevel oldReq = this.requiredGrade;
         try {
             this.env = env;
             this.requiredGrade = requiredGrade;
+            if (expr instanceof ModalityExpr m && expected instanceof ModalityType mt) {
+                Type innerExpected = mt.getInner();
+                SecurityLevel levelExpected = mt.getLevel();
+                TypeEnv promotedEnv = env.promoteAll(levelExpected);
+                Type innerActual = checkExprWithExpected(m.getInner(), promotedEnv, levelExpected, innerExpected);
+                if (!typeEquals(innerExpected, innerActual)) {
+                    throw new TypeError("Modality inner expression has type " + showType(innerActual)
+                            + " but expected " + showType(innerExpected));
+                }
+                return new ModalityType(innerActual, levelExpected);
+            }
             return expr.accept(this);
         } finally {
             this.env = oldEnv;
@@ -144,9 +159,15 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
         }
         Type constType = constantTypes.get(name);
         if (constType != null) {
-            // constants treated as SECURE
-            if (!leq(requiredGrade, SecurityLevel.SECRET)) {
-                throw new TypeError("Using constant '" + name + "' violates security grade");
+            if (constType instanceof ModalityType mt) {
+                if (!leq(mt.getLevel(), requiredGrade)) {
+                    throw new TypeError("Using constant '" + name + "' at grade " + requiredGrade
+                            + " requires grade " + mt.getLevel());
+                }
+            } else {
+                if (!leq(SecurityLevel.SECRET, requiredGrade)) {
+                    throw new TypeError("Using constant '" + name + "' violates security grade");
+                }
             }
             return constType;
         }
@@ -201,7 +222,11 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
 
     @Override
     public Type visitIfExpr(IfExpr expr) {
-        Type condType = checkExpr(expr.getCondition(), env, SecurityLevel.PUBLIC);
+        if (!leq(requiredGrade, SecurityLevel.PUBLIC)) {
+            throw new TypeError("Condition of if must be PUBLIC, but current grade is " + requiredGrade);
+        }
+
+        Type condType = checkExpr(expr.getCondition(), env, requiredGrade);
         requireBool(condType, "condition of if");
         Type thenType = checkExpr(expr.getThenBranch(), env, requiredGrade);
         Type elseType = checkExpr(expr.getElseBranch(), env, requiredGrade);
@@ -224,7 +249,8 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
 
     @Override
     public Type visitModalityExpr(ModalityExpr expr) {
-        Type inner = checkExpr(expr.getInner(), env, requiredGrade);
+        TypeEnv promotedEnv = env.promoteAll(requiredGrade);
+        Type inner = checkExpr(expr.getInner(), promotedEnv, requiredGrade);
         return new ModalityType(inner, requiredGrade);
     }
 
@@ -240,7 +266,7 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
             if (!(current instanceof FunctionType ft)) {
                 throw new TypeError("Too many arguments in call to '" + expr.getFunctionName() + "'");
             }
-            Type argType = checkExpr(args.get(i), env, ft.getLevel());
+            Type argType = checkExprWithExpected(args.get(i), env, ft.getLevel(), ft.getFrom());
             if (!typeEquals(argType, ft.getFrom())) {
                 throw new TypeError("Argument " + (i + 1) + " of '" + expr.getFunctionName() + "' has type "
                         + showType(argType) + " but expected " + showType(ft.getFrom()));
@@ -279,7 +305,7 @@ public final class TypeChecker extends BaseASTVisitor<Type> {
 
     @Override
     public Type visitBuiltinType(BuiltinType expr) {
-        return expr; // identity
+        return expr;
     }
 
     @Override

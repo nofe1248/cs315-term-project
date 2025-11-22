@@ -20,8 +20,8 @@ public final class SecurityOps {
 
     // multiplication as join
     public static SecurityLevel times(SecurityLevel a, SecurityLevel b) {
-        if (a == SecurityLevel.SECRET || b == SecurityLevel.SECRET) return SecurityLevel.SECRET;
-        return SecurityLevel.PUBLIC;
+        if (a == SecurityLevel.PUBLIC || b == SecurityLevel.PUBLIC) return SecurityLevel.PUBLIC;
+        return SecurityLevel.SECRET;
     }
 }
 
