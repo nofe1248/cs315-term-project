@@ -1,0 +1,11 @@
+fun secure_not_leak : Bool^Sec -> Bool
+fun secure_not_leak n = if n then false else true
+
+fun secure_not : Bool^Sec -> Bool [Sec]
+fun secure_not n = [(if n then false else true)]
+
+fun public_not : Bool^Pub -> Bool
+fun public_not n = if n then false else true
+
+fun main : Unit^Pub -> Bool
+fun main = public_not true
