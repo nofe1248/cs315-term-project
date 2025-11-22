@@ -1,0 +1,8 @@
+fun inc : Int^Pub -> Int
+fun inc x = x + 1
+
+fun applyTwiceInc : Int^Pub -> Int
+fun applyTwiceInc x = inc (inc x)
+
+fun main : Unit^Pub -> Int
+fun main = applyTwiceInc 10

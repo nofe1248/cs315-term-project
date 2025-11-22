@@ -62,3 +62,4 @@ flowstlc-compiler/build/
 
 ### VS Code ###
 .vscode/
+.idea/

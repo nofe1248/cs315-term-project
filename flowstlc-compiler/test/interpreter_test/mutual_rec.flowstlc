@@ -1,0 +1,8 @@
+fun even : Int^Pub -> Bool
+fun even n = if n == 0 then true else (odd (n - 1))
+
+fun odd : Int^Pub -> Bool
+fun odd n = if n == 0 then false else (even (n - 1))
+
+fun main : Unit^Pub -> Int
+fun main = if (odd 7) then 1 else 0

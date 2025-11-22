@@ -1,0 +1,6 @@
+fun flip_bug : {a: Bool, b: Int}^Pub -> Bool
+fun flip_bug r = not r.a
+
+fun main : Unit^Pub -> Int
+fun main =
+  if (flip_bug ({a = true, b = 0})) then 1 else 2

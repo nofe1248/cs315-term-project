@@ -141,6 +141,18 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
         indent = prev;
         return sb.toString();
     }
+    @Override
+    public String visitUnannotatedFunctionType(UnannotatedFunctionType type) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(node("UnannotatedFunctionType"));
+
+        indent += "  ";
+        sb.append(child("from", type.getFrom()));
+        sb.append(child("to", type.getTo()));
+        indent = indent.substring(0, indent.length() - 2);
+
+        return sb.toString();
+    }
 
     @Override
     public String visitRecordFieldAccessExpr(RecordFieldAccessExpr expr) {
