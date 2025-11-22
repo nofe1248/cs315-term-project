@@ -37,10 +37,22 @@ security_level
 ;
 
 type
-    : builtin_type                                  #BuiltinType
-    | type LBRACK security_level RBRACK             #ModalityType
-    | type CARET security_level ARROW type          #FunctionType
-    | LBRACE record_type_field (COMMA record_type_field)* COMMA? RBRACE  #RecordType
+    : function_type
+;
+
+function_type
+    : modality_type (CARET security_level ARROW function_type)?
+;
+
+modality_type
+    : base_type
+    | modality_type LBRACK security_level RBRACK
+    | LBRACE record_type_field (COMMA record_type_field)* COMMA? RBRACE
+;
+
+base_type
+    : builtin_type
+    | LPAREN type RPAREN
 ;
 
 record_type_field :

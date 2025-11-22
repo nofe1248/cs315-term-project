@@ -1,0 +1,5 @@
+fun assoc1 : Int^Pub -> Int^Pub -> Int
+fun assoc1 a b = a + b
+
+fun assoc2 : (Int^Pub -> Int)^Pub -> Int
+fun assoc2 f = f 0

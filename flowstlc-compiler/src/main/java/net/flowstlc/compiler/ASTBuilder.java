@@ -99,18 +99,40 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
     // ==================== 类型转换 ====================
 
     @Override
-    public Object visitFunctionType(FlowSTLCParser.FunctionTypeContext ctx) {
-        Type from = (Type) visit(ctx.type(0));
+    public Object visitFunction_type(FlowSTLCParser.Function_typeContext ctx) {
+        Type from = (Type) visit(ctx.modality_type());
+        if (ctx.security_level() == null) {
+            return from;
+        }
         SecurityLevel level = (SecurityLevel) visit(ctx.security_level());
-        Type to = (Type) visit(ctx.type(1));
+        Type to = (Type) visit(ctx.function_type());
         return new FunctionType(from, level, to);
     }
 
     @Override
-    public Object visitModalityType(FlowSTLCParser.ModalityTypeContext ctx) {
-        Type inner = (Type) visit(ctx.type());
+    public Object visitModality_type(FlowSTLCParser.Modality_typeContext ctx) {
+        if (ctx.LBRACE() != null) {
+            Map<String, Type> fields = ctx.record_type_field().stream()
+                    .collect(Collectors.toMap(
+                            fieldCtx -> fieldCtx.Identifier().getText(),
+                            fieldCtx -> (Type) visit(fieldCtx.type())
+                    ));
+            return new RecordType(fields);
+        }
+        if (ctx.base_type() != null) {
+            return visit(ctx.base_type());
+        }
+        Type inner = (Type) visit(ctx.modality_type());
         SecurityLevel level = (SecurityLevel) visit(ctx.security_level());
         return new ModalityType(inner, level);
+    }
+
+    @Override
+    public Object visitBase_type(FlowSTLCParser.Base_typeContext ctx) {
+        if (ctx.builtin_type() != null) {
+            return visit(ctx.builtin_type());
+        }
+        return visit(ctx.type());
     }
 
     @Override
@@ -262,16 +284,6 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         Expr recordExpr = (Expr) visit(ctx.simple_expression());
         String fieldName = ctx.Identifier().getText();
         return new RecordFieldAccessExpr(recordExpr, fieldName);
-    }
-
-    @Override
-    public Object visitRecordType(FlowSTLCParser.RecordTypeContext ctx) {
-        Map<String, Type> fields = ctx.record_type_field().stream()
-                .collect(Collectors.toMap(
-                        fieldCtx -> fieldCtx.Identifier().getText(),
-                        fieldCtx -> (Type) visit(fieldCtx.type())
-                ));
-        return new RecordType(fields);
     }
 
     @Override
