@@ -20,6 +20,7 @@ public interface ASTVisitor<R> {
     R visitRecordFieldAccessExpr(RecordFieldAccessExpr expr);
     R visitRecordType(RecordType type);
     R visitSequenceExpr(SequenceExpr expr);
+    R visitStringLiteralExpr(StringLiteralExpr expr);
     R visitUnannotatedFunctionType(UnannotatedFunctionType type);
     R visitUnaryExpr(UnaryExpr expr);
     R visitUnitLiteralExpr(UnitLiteralExpr expr);

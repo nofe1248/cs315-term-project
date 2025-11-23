@@ -1,5 +1,6 @@
 /flowstlc/.git
 /flowstlc/.lake
+/report/_minted
 *.aux
 *.lof
 *.log
@@ -25,6 +26,7 @@
 *.synctex.gz(busy)
 *.pdfsync
 *.DS_Store
+*.minted
 
 flowstlc-compiler/target/
 !.mvn/wrapper/maven-wrapper.jar
@@ -37,6 +39,7 @@ flowstlc-compiler/.idea/modules.xml
 flowstlc-compiler/.idea/jarRepositories.xml
 flowstlc-compiler/.idea/compiler.xml
 flowstlc-compiler/.idea/libraries/
+flowstlc-compiler/gen
 *.iws
 *.iml
 *.ipr

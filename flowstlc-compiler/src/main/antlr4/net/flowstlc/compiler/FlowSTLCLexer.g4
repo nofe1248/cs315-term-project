@@ -17,6 +17,7 @@ KW_IN : 'in';
 KW_UNIT : 'Unit';
 KW_UNIT_LITERAL : 'unit';
 KW_VAL : 'val';
+KW_STRING : 'String';
 
 // Integer Literals
 IntegerLiteral:
@@ -41,6 +42,26 @@ fragment Underscores: '_'+;
 // Boolean Literals
 
 BooleanLiteral: 'true' | 'false';
+
+// String Literals
+StringLiteral
+    : '"' ( ~["\\\r\n] | EscapeSequence )* '"'
+    ;
+
+// Escape sequences for string literals
+
+fragment EscapeSequence
+    : '\\' [btnfr"'\\]
+    | UnicodeEscape
+    ;
+
+fragment UnicodeEscape
+    : '\\' 'u' HexDigit HexDigit HexDigit HexDigit
+    ;
+
+fragment HexDigit: [0-9a-fA-F];
+
+// Symbols
 
 LPAREN     : '(';
 RPAREN     : ')';

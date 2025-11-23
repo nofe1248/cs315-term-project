@@ -63,6 +63,7 @@ builtin_type
     : KW_INT    #IntType
     | KW_UNIT   #UnitType
     | KW_BOOL   #BoolType
+    | KW_STRING #StringType
 ;
 
 expr
@@ -111,4 +112,5 @@ literal
     : IntegerLiteral    #IntLiteral
     | BooleanLiteral    #BoolLiteral
     | KW_UNIT_LITERAL   #UnitLiteral
+    | StringLiteral     #StringLiteral
 ;

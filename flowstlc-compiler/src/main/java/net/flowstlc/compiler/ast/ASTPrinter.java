@@ -203,6 +203,11 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
     }
 
     @Override
+    public String visitStringLiteralExpr(StringLiteralExpr expr) {
+        return node("StringLiteral value=\"" + expr.getValue() + "\"");
+    }
+
+    @Override
     public String visitUnaryExpr(UnaryExpr expr) {
         return node("UnaryExpr op=" + expr.getOp()) +
                 child("expr", expr.getExpr());

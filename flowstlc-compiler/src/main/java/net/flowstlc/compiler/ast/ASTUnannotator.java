@@ -93,6 +93,11 @@ public class ASTUnannotator extends BaseASTVisitor<ASTNode> {
     }
 
     @Override
+    public ASTNode visitStringLiteralExpr(StringLiteralExpr expr) {
+        return expr;
+    }
+
+    @Override
     public ASTNode visitLetExpr(LetExpr expr) {
         Expr newBound = (Expr) expr.getBound().accept(this);
         Expr newIn    = (Expr) expr.getInExpr().accept(this);

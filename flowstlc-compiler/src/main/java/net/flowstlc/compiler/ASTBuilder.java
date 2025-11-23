@@ -150,6 +150,11 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         return new BuiltinType(BuiltinKind.BOOL);
     }
 
+    @Override
+    public Object visitStringType(FlowSTLCParser.StringTypeContext ctx) {
+        return new BuiltinType(BuiltinKind.STRING);
+    }
+
     // ==================== 表达式转换 ====================
 
     @Override
@@ -335,5 +340,87 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
     @Override
     public Object visitUnitLiteral(FlowSTLCParser.UnitLiteralContext ctx) {
         return UnitLiteralExpr.INSTANCE;
+    }
+
+    @Override
+    public Object visitStringLiteral(FlowSTLCParser.StringLiteralContext ctx) {
+        String text = ctx.StringLiteral().getText();
+        String raw = text.substring(1, text.length() - 1);
+        String value = unescapeString(raw);
+        return new StringLiteralExpr(value);
+    }
+
+    private String unescapeString(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); ) {
+            char c = s.charAt(i);
+            if (c != '\\') {
+                sb.append(c);
+                i++;
+                continue;
+            }
+            if (i + 1 >= s.length()) {
+                throw new IllegalArgumentException("Invalid escape sequence at end of string");
+            }
+            char esc = s.charAt(i + 1);
+            switch (esc) {
+                case 'b':
+                    sb.append('\b');
+                    i += 2;
+                    break;
+                case 't':
+                    sb.append('\t');
+                    i += 2;
+                    break;
+                case 'n':
+                    sb.append('\n');
+                    i += 2;
+                    break;
+                case 'f':
+                    sb.append('\f');
+                    i += 2;
+                    break;
+                case 'r':
+                    sb.append('\r');
+                    i += 2;
+                    break;
+                case '"':
+                    sb.append('"');
+                    i += 2;
+                    break;
+                case '\'':
+                    sb.append('\'');
+                    i += 2;
+                    break;
+                case '\\':
+                    sb.append('\\');
+                    i += 2;
+                    break;
+                case 'u':
+                    if (i + 2 >= s.length() || s.charAt(i + 2) != '{') {
+                        throw new IllegalArgumentException("Invalid unicode escape sequence at index " + i + ": missing '{'");
+                    }
+                    int braceClose = s.indexOf('}', i + 3);
+                    if (braceClose == -1) {
+                        throw new IllegalArgumentException("Invalid unicode escape sequence at index " + i + ": missing '}'");
+                    }
+                    String hex = s.substring(i + 3, braceClose);
+                    if (hex.isEmpty() || hex.length() > 6 || !hex.matches("[0-9a-fA-F]+")) {
+                        throw new IllegalArgumentException("Invalid unicode escape value: " + hex);
+                    }
+                    int codepoint;
+                    try {
+                        codepoint = Integer.parseInt(hex, 16);
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Invalid unicode escape value: " + hex, e);
+                    }
+                    sb.append(Character.toChars(codepoint));
+                    i = braceClose + 1;
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported escape sequence: \\" + esc);
+            }
+        }
+        return sb.toString();
     }
 }

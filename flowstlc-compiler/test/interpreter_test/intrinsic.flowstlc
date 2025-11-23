@@ -1,0 +1,10 @@
+fun main : Unit^Pub -> Int
+fun main =
+    @printInt 1;
+    @printBool true;
+    @printString "Hello, FlowSTLC!";
+    @printf "The answer is: %d\n" 42;
+    @printf "The string entered: %s\n" @readString;
+    @printf "The integer entered: %d\n" @readInt;
+    @printf "The boolean entered: %b\n" @readBool;
+    0

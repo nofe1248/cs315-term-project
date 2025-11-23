@@ -3,6 +3,7 @@ package net.flowstlc.compiler.interpreter;
 import net.flowstlc.compiler.ast.*;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,11 @@ public class EvalVisitor implements ASTVisitor<Value> {
         return UnitV.INSTANCE;
     }
 
+    @Override
+    public Value visitStringLiteralExpr(StringLiteralExpr expr) {
+        return new StringV(expr.getValue());
+    }
+
     // ---------------- Variables / Control ----------------
 
     @Override
@@ -93,6 +99,7 @@ public class EvalVisitor implements ASTVisitor<Value> {
                 ? expr.getThenBranch().accept(this)
                 : expr.getElseBranch().accept(this);
     }
+
     @Override
     public Value visitRecordExpr(RecordExpr expr) {
         // 对每个字段求值
@@ -118,6 +125,7 @@ public class EvalVisitor implements ASTVisitor<Value> {
         }
         return rv.getField(field);
     }
+
     @Override
     public Value visitRecordType(RecordType type) {
         throw new IllegalStateException("EvalVisitor should not evaluate RecordType");
@@ -224,11 +232,11 @@ public class EvalVisitor implements ASTVisitor<Value> {
                         yield new IntV(a.mod(b));
                     }
 
-                    case EQ  -> new BoolV(a.equals(b));
+                    case EQ -> new BoolV(a.equals(b));
                     case NEQ -> new BoolV(!a.equals(b));
-                    case LT  -> new BoolV(a.compareTo(b) < 0);
+                    case LT -> new BoolV(a.compareTo(b) < 0);
                     case LTE -> new BoolV(a.compareTo(b) <= 0);
-                    case GT  -> new BoolV(a.compareTo(b) > 0);
+                    case GT -> new BoolV(a.compareTo(b) > 0);
                     case GTE -> new BoolV(a.compareTo(b) >= 0);
 
                     default -> throw new RuntimeError("Unsupported operator: " + expr.getOp());
@@ -247,11 +255,15 @@ public class EvalVisitor implements ASTVisitor<Value> {
 
     // ---------------- Intrinsic functions ----------------
     /*
-      Currently FlowSTLC has four intrinsic functions:
-        - printInt(int): Int^Pub->Unit and Int^Sec->Unit
-        - printBool(bool): Bool^Pub->Unit and Bool^Sec->Unit
+      Currently FlowSTLC has the following intrinsic functions:
+        - printInt(Int): Int^Pub->Unit and Int^Sec->Unit
+        - printBool(Bool): Bool^Pub->Unit and Bool^Sec->Unit
+        - printString(String): String^Pub->Unit and String^Sec->Unit
         - readInt(): Unit^Pub->Int
         - readBool(): Unit^Pub->Bool
+        - readString(): Unit^Pub->String
+        - printf(String, ...): String^Pub, ... -> Unit (the type actually cannot be represented in our type system)
+        - format(String, ...): String^Pub, ... -> String (the type actually cannot be represented in our type system)
      */
     @Override
     public Value visitIntrinsicExpr(IntrinsicExpr expr) {
@@ -281,6 +293,17 @@ public class EvalVisitor implements ASTVisitor<Value> {
                 System.out.println(((BoolV) v).getValue());
                 return UnitV.INSTANCE;
             }
+            case "printString" -> {
+                if (args.size() != 1) {
+                    throw new RuntimeError("printString expects 1 argument");
+                }
+                Value v = args.get(0).accept(this);
+                if (!(v instanceof StringV)) {
+                    throw new RuntimeError("printString expects a string");
+                }
+                System.out.println(((StringV) v).getValue());
+                return UnitV.INSTANCE;
+            }
             case "readInt" -> {
                 if (!args.isEmpty()) {
                     throw new RuntimeError("readInt expects no arguments");
@@ -308,6 +331,77 @@ public class EvalVisitor implements ASTVisitor<Value> {
                 } catch (Exception e) {
                     throw new RuntimeError("Failed to read boolean from input");
                 }
+            }
+            case "readString" -> {
+                if (!args.isEmpty()) {
+                    throw new RuntimeError("readString expects no arguments");
+                }
+                try {
+                    byte[] input = new byte[1000];
+                    int readBytes = System.in.read(input);
+                    String line = new String(input, 0, readBytes).trim();
+                    return new StringV(line);
+                } catch (Exception e) {
+                    throw new RuntimeError("Failed to read string from input");
+                }
+            }
+            case "printf" -> {
+                if (args.isEmpty()) {
+                    throw new RuntimeError("printf expects at least 1 argument");
+                }
+                Value formatV = args.get(0).accept(this);
+                if (!(formatV instanceof StringV)) {
+                    throw new RuntimeError("printf expects first argument to be a string");
+                }
+                String formatStr = ((StringV) formatV).getValue();
+                Value[] formatArgs = new Value[args.size() - 1];
+                for (int i = 1; i < args.size(); i++) {
+                    formatArgs[i - 1] = args.get(i).accept(this);
+                }
+                System.out.printf(formatStr, Arrays.stream(formatArgs).map(raw -> {
+                    if (raw instanceof IntV iv) {
+                        return iv.getValue();
+                    } else if (raw instanceof BoolV bv) {
+                        return bv.getValue();
+                    } else if (raw instanceof StringV sv) {
+                        return sv.getValue();
+                    } else if (raw instanceof UnitV) {
+                        return "unit";
+                    } else {
+                        throw new RuntimeError("Unsupported format argument type: " + raw.getClass().getName());
+                    }
+                }).toArray());
+                return UnitV.INSTANCE;
+            }
+            case "format" -> {
+                if (args.isEmpty()) {
+                    throw new RuntimeError("format expects at least 1 argument");
+                }
+                Value formatV = args.get(0).accept(this);
+                if (!(formatV instanceof StringV)) {
+                    throw new RuntimeError("format expects first argument to be a string");
+                }
+                String formatStr = ((StringV) formatV).getValue();
+                Object[] formatArgs = new Object[args.size() - 1];
+                for (int i = 1; i < args.size(); i++) {
+                    formatArgs[i - 1] = args.get(i).accept(this);
+                }
+                String result = String.format(formatStr, Arrays.stream(formatArgs).map(
+                        raw -> {
+                            if (raw instanceof IntV iv) {
+                                return iv.getValue();
+                            } else if (raw instanceof BoolV bv) {
+                                return bv.getValue();
+                            } else if (raw instanceof StringV sv) {
+                                return sv.getValue();
+                            } else if (raw instanceof UnitV) {
+                                return "unit";
+                            } else {
+                                throw new RuntimeError("Unsupported format argument type: " + raw.getClass().getName());
+                            }
+                        }
+                ));
+                return new StringV(result);
             }
             default -> throw new RuntimeError("Unknown intrinsic: " + name);
         }
