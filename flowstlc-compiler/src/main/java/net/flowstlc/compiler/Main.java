@@ -4,6 +4,8 @@ import static net.sourceforge.argparse4j.impl.Arguments.storeTrue;
 
 import net.flowstlc.compiler.ast.ASTUnannotator;
 import net.flowstlc.compiler.ast.Program;
+import net.flowstlc.compiler.interpreter.Interpreter;
+import net.flowstlc.compiler.interpreter.Value;
 import net.flowstlc.compiler.typechecker.TypeChecker;
 import net.flowstlc.compiler.typechecker.TypeError;
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -38,6 +40,12 @@ public class Main {
         argumentParser.addArgument("--dump-unannotated-ast")
                 .help("Dump unannotated AST")
                 .action(storeTrue());
+        argumentParser.addArgument("--no-typecheck")
+                .help("Skip type checking")
+                .action(storeTrue());
+        argumentParser.addArgument("--no-interpret")
+                .help("Skip interpretation")
+                .action(storeTrue());
         try {
             Namespace ns = argumentParser.parseArgs(args);
             CharStream input = CharStreams.fromFileName(ns.getString("source"));
@@ -59,8 +67,32 @@ public class Main {
                 printer.print(unann);
             }
 
-            TypeChecker checker = new TypeChecker();
-            checker.checkProgram(program, ns.getString("entry_point"));
+            String entryPoint = ns.getString("entry_point");
+
+            boolean typecheckResult = true;
+
+            if (!ns.getBoolean("no_typecheck")) {
+                try {
+                    TypeChecker checker = new TypeChecker();
+                    checker.checkProgram(program, entryPoint);
+                } catch (TypeError t) {
+                    System.err.println("Type checking failed: " + t.getMessage());
+                    typecheckResult = false;
+                }
+            }
+
+            if (!ns.getBoolean("no_interpret") && typecheckResult) {
+                ASTUnannotator unannotator = new ASTUnannotator();
+                Program unannotated = unannotator.unannotate(program);
+
+                Interpreter interp = new Interpreter();
+                interp.run(unannotated);
+
+                Value result = interp.callEntryPoint(entryPoint);
+
+                System.out.println("Result=" + result);
+            }
+
         } catch (TypeError t) {
             System.err.println("Type error: " + t.getMessage());
         } catch (Exception e) {

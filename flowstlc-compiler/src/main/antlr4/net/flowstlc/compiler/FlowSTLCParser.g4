@@ -70,6 +70,7 @@ expr
     | KW_LET LBRACK Identifier RBRACK ASSIGN simple_expression KW_IN simple_expression  #LetExpression
     | Identifier simple_expression+                                                     #FunctionCall
     | KW_IF simple_expression KW_THEN simple_expression KW_ELSE simple_expression       #IfExpression
+    | expr SEMI expr                                                                    #SequenceExpression
 ;
 
 simple_expression
@@ -89,7 +90,7 @@ simple_expression
     | simple_expression SUB simple_expression                                       #SubExpression
     // Comparison operators
     | simple_expression LT simple_expression                                        #LessThanExpression
-    | simple_expression LE simple_expression                                        #LessThanOrEqualExpression
+    | simple_expression LE simple_expression                                       #LessThanOrEqualExpression
     | simple_expression GT simple_expression                                        #GreaterThanExpression
     | simple_expression GE simple_expression                                        #GreaterThanOrEqualExpression
     | simple_expression EQUAL simple_expression                                     #EqualExpression
@@ -98,6 +99,8 @@ simple_expression
     | KW_NOT simple_expression                                                      #NotExpression
     | simple_expression KW_AND simple_expression                                    #AndExpression
     | simple_expression KW_OR simple_expression                                     #OrExpression
+    // Intrinsic functions
+    | AT Identifier simple_expression*                                              #IntrinsicExpression
     ;
 
 record_expr_field :

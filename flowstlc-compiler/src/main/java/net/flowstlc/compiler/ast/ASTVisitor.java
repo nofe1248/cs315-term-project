@@ -11,6 +11,7 @@ public interface ASTVisitor<R> {
     R visitIdentifierExpr(IdentifierExpr expr);
     R visitIfExpr(IfExpr expr);
     R visitIntLiteralExpr(IntLiteralExpr expr);
+    R visitIntrinsicExpr(IntrinsicExpr expr);
     R visitLetExpr(LetExpr expr);
     R visitModalityExpr(ModalityExpr type);
     R visitModalityType(ModalityType type);
@@ -18,6 +19,7 @@ public interface ASTVisitor<R> {
     R visitRecordExpr(RecordExpr expr);
     R visitRecordFieldAccessExpr(RecordFieldAccessExpr expr);
     R visitRecordType(RecordType type);
+    R visitSequenceExpr(SequenceExpr expr);
     R visitUnannotatedFunctionType(UnannotatedFunctionType type);
     R visitUnaryExpr(UnaryExpr expr);
     R visitUnitLiteralExpr(UnitLiteralExpr expr);

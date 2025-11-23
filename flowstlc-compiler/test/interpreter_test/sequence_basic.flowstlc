@@ -1,0 +1,6 @@
+fun main : Unit^Pub -> Int
+fun main =
+    @printInt 1;
+    @printBool true;
+    @readInt + 1
+

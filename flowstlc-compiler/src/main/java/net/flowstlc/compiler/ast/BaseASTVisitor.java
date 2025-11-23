@@ -56,6 +56,11 @@ public class BaseASTVisitor<R> implements ASTVisitor<R> {
     }
 
     @Override
+    public R visitIntrinsicExpr(IntrinsicExpr expr) {
+        return defaultResult();
+    }
+
+    @Override
     public R visitLetExpr(LetExpr expr) {
         return defaultResult();
     }
@@ -87,6 +92,11 @@ public class BaseASTVisitor<R> implements ASTVisitor<R> {
 
     @Override
     public R visitRecordType(RecordType type) {
+        return defaultResult();
+    }
+
+    @Override
+    public R visitSequenceExpr(SequenceExpr expr) {
         return defaultResult();
     }
 

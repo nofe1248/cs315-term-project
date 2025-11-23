@@ -108,10 +108,9 @@ public class EvalVisitor implements ASTVisitor<Value> {
     @Override
     public Value visitRecordFieldAccessExpr(RecordFieldAccessExpr expr) {
         Value recV = expr.getRecordExpr().accept(this);
-        if (!(recV instanceof RecordV)) {
+        if (!(recV instanceof RecordV rv)) {
             throw new RuntimeError("Field access on non-record value");
         }
-        RecordV rv = (RecordV) recV;
 
         String field = expr.getFieldName();
         if (!rv.hasField(field)) {
@@ -131,10 +130,9 @@ public class EvalVisitor implements ASTVisitor<Value> {
     public Value visitFunctionCallExpr(FunctionCallExpr expr) {
         // functionName is a String, lookup from env
         Value fun = env.get(expr.getFunctionName());
-        if (!(fun instanceof ClosureV)) {
+        if (!(fun instanceof ClosureV clo)) {
             throw new RuntimeError("Not a function: " + expr.getFunctionName());
         }
-        ClosureV clo = (ClosureV) fun;
 
         List<String> params = clo.getParams();
         List<Expr> args = expr.getArguments();
@@ -165,17 +163,15 @@ public class EvalVisitor implements ASTVisitor<Value> {
 
         switch (expr.getOp()) {
             case NEG -> {
-                if (!(v instanceof IntV)) {
+                if (!(v instanceof IntV iv)) {
                     throw new RuntimeError("NEG requires int");
                 }
-                IntV iv = (IntV) v;
                 return new IntV(iv.getValue().negate());
             }
             case NOT -> {
-                if (!(v instanceof BoolV)) {
+                if (!(v instanceof BoolV bv)) {
                     throw new RuntimeError("NOT requires bool");
                 }
-                BoolV bv = (BoolV) v;
                 return new BoolV(!bv.getValue());
             }
             default -> throw new RuntimeError("Unknown unary op: " + expr.getOp());
@@ -247,6 +243,80 @@ public class EvalVisitor implements ASTVisitor<Value> {
     public Value visitModalityExpr(ModalityExpr expr) {
         // labels removed by filter -> runtime no-op
         return expr.getInner().accept(this);
+    }
+
+    // ---------------- Intrinsic functions ----------------
+    /*
+      Currently FlowSTLC has four intrinsic functions:
+        - printInt(int): Int^Pub->Unit and Int^Sec->Unit
+        - printBool(bool): Bool^Pub->Unit and Bool^Sec->Unit
+        - readInt(): Unit^Pub->Int
+        - readBool(): Unit^Pub->Bool
+     */
+    @Override
+    public Value visitIntrinsicExpr(IntrinsicExpr expr) {
+        String name = expr.getIntrinsicName();
+        List<Expr> args = expr.getArguments();
+
+        switch (name) {
+            case "printInt" -> {
+                if (args.size() != 1) {
+                    throw new RuntimeError("printInt expects 1 argument");
+                }
+                Value v = args.get(0).accept(this);
+                if (!(v instanceof IntV)) {
+                    throw new RuntimeError("printInt expects an integer");
+                }
+                System.out.println(((IntV) v).getValue());
+                return UnitV.INSTANCE;
+            }
+            case "printBool" -> {
+                if (args.size() != 1) {
+                    throw new RuntimeError("printBool expects 1 argument");
+                }
+                Value v = args.get(0).accept(this);
+                if (!(v instanceof BoolV)) {
+                    throw new RuntimeError("printBool expects a boolean");
+                }
+                System.out.println(((BoolV) v).getValue());
+                return UnitV.INSTANCE;
+            }
+            case "readInt" -> {
+                if (!args.isEmpty()) {
+                    throw new RuntimeError("readInt expects no arguments");
+                }
+                try {
+                    byte[] input = new byte[100];
+                    int readBytes = System.in.read(input);
+                    String line = new String(input, 0, readBytes).trim();
+                    BigInteger intValue = new BigInteger(line);
+                    return new IntV(intValue);
+                } catch (Exception e) {
+                    throw new RuntimeError("Failed to read integer from input");
+                }
+            }
+            case "readBool" -> {
+                if (!args.isEmpty()) {
+                    throw new RuntimeError("readBool expects no arguments");
+                }
+                try {
+                    byte[] input = new byte[100];
+                    int readBytes = System.in.read(input);
+                    String line = new String(input, 0, readBytes).trim();
+                    boolean boolValue = Boolean.parseBoolean(line);
+                    return new BoolV(boolValue);
+                } catch (Exception e) {
+                    throw new RuntimeError("Failed to read boolean from input");
+                }
+            }
+            default -> throw new RuntimeError("Unknown intrinsic: " + name);
+        }
+    }
+
+    @Override
+    public Value visitSequenceExpr(SequenceExpr expr) {
+        expr.getFirst().accept(this);
+        return expr.getSecond().accept(this);
     }
 
     // ---------------- Type nodes (should never be evaluated) ----------------

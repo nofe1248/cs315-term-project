@@ -7,4 +7,4 @@ fun fib n =
     )
 
 fun main : Unit^Pub -> Int
-fun main = fib 10
+fun main = fib @readInt

@@ -67,6 +67,7 @@ DIV      : '/';
 MOD      : '%';
 ARROW    : '->';
 DOT      : '.';
+AT       : '@';
 
 // Identifiers
 

@@ -155,9 +155,20 @@ public class ASTUnannotator extends BaseASTVisitor<ASTNode> {
         return new RecordType(newFields);
     }
 
-
     @Override
     public ASTNode visitModalityExpr(ModalityExpr expr) {
         return expr.getInner().accept(this);
+    }
+
+    @Override
+    public ASTNode visitIntrinsicExpr(IntrinsicExpr expr) {
+        return expr;
+    }
+
+    @Override
+    public ASTNode visitSequenceExpr(SequenceExpr expr) {
+        Expr first = (Expr) expr.getFirst().accept(this);
+        Expr second = (Expr) expr.getSecond().accept(this);
+        return new SequenceExpr(first, second);
     }
 }

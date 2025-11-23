@@ -153,6 +153,13 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
     // ==================== 表达式转换 ====================
 
     @Override
+    public Object visitSequenceExpression(FlowSTLCParser.SequenceExpressionContext ctx) {
+        Expr first = (Expr) visit(ctx.expr(0));
+        Expr second = (Expr) visit(ctx.expr(1));
+        return new SequenceExpr(first, second);
+    }
+
+    @Override
     public Object visitLetExpression(FlowSTLCParser.LetExpressionContext ctx) {
         String name = ctx.Identifier().getText();
         Expr bound = (Expr) visit(ctx.simple_expression(0));
@@ -176,6 +183,18 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         Expr lhs = (Expr) visit(leftCtx);
         Expr rhs = (Expr) visit(rightCtx);
         return new BinaryExpr(lhs, op, rhs);
+    }
+
+    @Override
+    public Object visitIntrinsicExpression(FlowSTLCParser.IntrinsicExpressionContext ctx) {
+        String name = ctx.Identifier().getText();
+        List<Expr> arguments = new ArrayList<>();
+        if (ctx.simple_expression() != null) {
+            arguments = ctx.simple_expression().stream()
+                    .map(exprCtx -> (Expr) visit(exprCtx))
+                    .collect(Collectors.toList());
+        }
+        return new IntrinsicExpr(name, arguments);
     }
 
     @Override

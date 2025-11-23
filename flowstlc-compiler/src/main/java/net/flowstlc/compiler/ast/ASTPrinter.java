@@ -61,19 +61,15 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
 
     @Override
     public String visitProgram(Program program) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("Program"));
-        sb.append(childList("declarations", program.getDeclarations()));
-        return sb.toString();
+        return node("Program") +
+                childList("declarations", program.getDeclarations());
     }
 
     @Override
     public String visitConstantDeclaration(ConstantDeclaration declaration) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("ConstantDeclaration name=" + declaration.getName()));
-        sb.append(child("type", declaration.getType()));
-        sb.append(child("value", declaration.getValue()));
-        return sb.toString();
+        return node("ConstantDeclaration name=" + declaration.getName()) +
+                child("type", declaration.getType()) +
+                child("value", declaration.getValue());
     }
 
     @Override
@@ -97,21 +93,17 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
 
     @Override
     public String visitFunctionType(FunctionType type) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("FunctionType"));
-        sb.append(child("from", type.getFrom()));
-        sb.append(value("level", String.valueOf(type.getLevel())));
-        sb.append(child("to", type.getTo()));
-        return sb.toString();
+        return node("FunctionType") +
+                child("from", type.getFrom()) +
+                value("level", String.valueOf(type.getLevel())) +
+                child("to", type.getTo());
     }
 
     @Override
     public String visitModalityType(ModalityType type) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("ModalityType"));
-        sb.append(child("inner", type.getInner()));
-        sb.append(value("level", String.valueOf(type.getLevel())));
-        return sb.toString();
+        return node("ModalityType") +
+                child("inner", type.getInner()) +
+                value("level", String.valueOf(type.getLevel()));
     }
 
     @Override
@@ -156,10 +148,8 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
 
     @Override
     public String visitRecordFieldAccessExpr(RecordFieldAccessExpr expr) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("RecordFieldAccessExpr field=" + expr.getFieldName()));
-        sb.append(child("record", expr.getRecordExpr()));
-        return sb.toString();
+        return node("RecordFieldAccessExpr field=" + expr.getFieldName()) +
+                child("record", expr.getRecordExpr());
     }
 
     @Override
@@ -213,53 +203,54 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
 
     @Override
     public String visitUnaryExpr(UnaryExpr expr) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("UnaryExpr op=" + expr.getOp()));
-        sb.append(child("expr", expr.getExpr()));
-        return sb.toString();
+        return node("UnaryExpr op=" + expr.getOp()) +
+                child("expr", expr.getExpr());
     }
 
     @Override
     public String visitBinaryExpr(BinaryExpr expr) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("BinaryExpr op=" + expr.getOp()));
-        sb.append(child("left", expr.getLeft()));
-        sb.append(child("right", expr.getRight()));
-        return sb.toString();
+        return node("BinaryExpr op=" + expr.getOp()) +
+                child("left", expr.getLeft()) +
+                child("right", expr.getRight());
     }
 
     @Override
     public String visitIfExpr(IfExpr expr) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("IfExpr"));
-        sb.append(child("condition", expr.getCondition()));
-        sb.append(child("then", expr.getThenBranch()));
-        sb.append(child("else", expr.getElseBranch()));
-        return sb.toString();
+        return node("IfExpr") +
+                child("condition", expr.getCondition()) +
+                child("then", expr.getThenBranch()) +
+                child("else", expr.getElseBranch());
     }
 
     @Override
     public String visitLetExpr(LetExpr expr) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("LetExpr name=" + expr.getName()));
-        sb.append(child("bound", expr.getBound()));
-        sb.append(child("in", expr.getInExpr()));
-        return sb.toString();
+        return node("LetExpr name=" + expr.getName()) +
+                child("bound", expr.getBound()) +
+                child("in", expr.getInExpr());
     }
 
     @Override
     public String visitFunctionCallExpr(FunctionCallExpr expr) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("FunctionCallExpr name=" + expr.getFunctionName()));
-        sb.append(childList("arguments", expr.getArguments()));
-        return sb.toString();
+        return node("FunctionCallExpr name=" + expr.getFunctionName()) +
+                childList("arguments", expr.getArguments());
     }
 
     @Override
     public String visitModalityExpr(ModalityExpr type) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(node("ModalityExpr"));
-        sb.append(child("inner", type.getInner()));
-        return sb.toString();
+        return node("ModalityExpr") +
+                child("inner", type.getInner());
+    }
+
+    @Override
+    public String visitIntrinsicExpr(IntrinsicExpr expr) {
+        return node("IntrinsicExpr name=" + expr.getIntrinsicName()) +
+                childList("arguments", expr.getArguments());
+    }
+
+    @Override
+    public String visitSequenceExpr(SequenceExpr expr) {
+        return node("SequenceExpr") +
+                child("first", expr.getFirst()) +
+                child("second", expr.getSecond());
     }
 }

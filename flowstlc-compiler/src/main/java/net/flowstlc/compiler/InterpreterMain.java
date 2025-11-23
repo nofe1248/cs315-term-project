@@ -3,13 +3,11 @@ package net.flowstlc.compiler;
 import net.flowstlc.compiler.ast.Program;
 import net.flowstlc.compiler.ast.ASTUnannotator;
 import net.flowstlc.compiler.interpreter.Interpreter;
-import net.flowstlc.compiler.interpreter.RuntimeError;
 import net.flowstlc.compiler.interpreter.Value;
 
 import net.flowstlc.compiler.typechecker.TypeChecker;
 import net.flowstlc.compiler.typechecker.TypeError;
 import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
 
@@ -37,11 +35,11 @@ public class InterpreterMain {
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         FlowSTLCParser parser = new FlowSTLCParser(tokens);
 
-        ParseTree tree = parser.program();
+        FlowSTLCParser.ProgramContext tree = parser.program();
 
         // ---------- Build full (annotated) AST ----------
         ASTBuilder builder = new ASTBuilder();
-        Program fullProgram = builder.build((FlowSTLCParser.ProgramContext) tree);
+        Program fullProgram = builder.build(tree);
 
         // ---------- Optional type check on full AST ----------
         if (doTypeCheck) {
