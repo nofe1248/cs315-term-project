@@ -9,6 +9,7 @@ import net.flowstlc.compiler.interpreter.Value;
 import net.flowstlc.compiler.typechecker.TypeChecker;
 import net.flowstlc.compiler.typechecker.TypeError;
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.helper.HelpScreenException;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
 
@@ -46,6 +47,12 @@ public class Main {
         argumentParser.addArgument("--no-interpret")
                 .help("Skip interpretation")
                 .action(storeTrue());
+
+        if (args.length == 0) {
+            argumentParser.printHelp();
+            return;
+        }
+
         try {
             Namespace ns = argumentParser.parseArgs(args);
             CharStream input = CharStreams.fromFileName(ns.getString("source"));
@@ -95,6 +102,7 @@ public class Main {
 
         } catch (TypeError t) {
             System.err.println("Type error: " + t.getMessage());
+        } catch (HelpScreenException ignored) {
         } catch (Exception e) {
             System.err.println("Error while running flowstlc-compiler: " + e.getMessage());
             e.printStackTrace(System.err);

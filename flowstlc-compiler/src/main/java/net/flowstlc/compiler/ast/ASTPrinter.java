@@ -133,6 +133,7 @@ public final class ASTPrinter extends BaseASTVisitor<String> {
         indent = prev;
         return sb.toString();
     }
+
     @Override
     public String visitUnannotatedFunctionType(UnannotatedFunctionType type) {
         StringBuilder sb = new StringBuilder();
