@@ -18,7 +18,7 @@
 \newcommand\lam[2]{\lambda #1.#2}
 \newcommand\unp[3]{\textbf{let }[#1]=#2\textbf{ in }#3}
 \newcommand\une[2]{\textbf{let }\unt=#1\textbf{ in }#2}
-\newcommand\gradedt[2]{\square_#1 #2}
+\newcommand\gradedt[2]{\square_{#1} #2}
 \newcommand\public{\texttt{Pub}}
 \newcommand\secret{\texttt{Sec}}
 \newcommand\irrele{\texttt{Irrelevant}}
@@ -38,10 +38,13 @@
 \newcommand\reduce{\rightsquigarrow}
 \newcommand\calv{\mathcal{V}}
 \newcommand\cale{\mathcal{E}}
+\newcommand\checking{\Leftarrow}
+\newcommand\synthesis{\Rightarrow}
 
 \newtheorem{definition}{Definition}
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
 \begin{document}
 
 \title{\textsc{FlowSTLC}: An Information Flow Control Type System Based On Graded Modality
@@ -257,7 +260,7 @@ The remaining rules specify the types of booleans, natural numbers, unit values,
 	\begin{prooftree}
 		\AXC{$\Gamma_1\vdash t_1:\untt$}
 		\AXC{$\Gamma_2\vdash t_2:T$}
-		\RightLabel{\textsc{T-UnitElim}}
+		\RightLabel{\textsc{T-Unit-Elim}}
 		\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
 	\end{prooftree}
 	\caption{Typing Rules for Built-in Booleans, Integers, etc.}
@@ -567,7 +570,156 @@ The binary relation specified here only capture the concept \emph{termination-in
 
 For the interpretation of the function type $T_1\to^\ell T_2$, the binary relation relates two abstractions where when two arbitrary values of $\gradedt{\ell}{T_1}$ are substituted into their bodies, the substitution results would relate at the result type $T_2$. The most important interpretation here is the one for the graded type $\gradedt{\ell}{T}$. For the graded types, if the graded $\ell$ is less or equal to the adversary level $adv$, then $t_1$ and $t_2$ must be related at the type $T$. Otherwise, $t_1$ and $t_2$ only need to be in their corresponding unary value interpretation and thus cannot be distinguished. This precisely captures the intuition that a low level adversary (i.e. $adv=\public$) cannot distinguish two secret values (i.e. $\ell=\secret$). Finally, the interpretation of contexts $\llbracket\Gamma\rrbracket^{adv}$ reuses the interpretation for graded types to capture the grading.
 
+\subsection{Fundamental Theorems and Noninterference Property}
+
+To formalize the noninterference property for our type system, we need a so-called "fundamental theorem" that connects the syntactic typing with semantic interpretation. We define a unary and a binary version of the theorem for the two types of relations above respectively.
+
+\begin{theorem}[Unary Fundamental Theorem]
+    For all well-typed terms $\Gamma\vdash t:T$, if $\gamma\in\llbracket\Gamma\rrbracket$, then we have $\gamma\; t\in\llbracket T\rrbracket_\cale$. Where $\gamma\; t$ represents the result of applying the subtitution of the mapping from variables to terms given by $\gamma$.
+\end{theorem}
+
+The theorem can be intuitively understood as, if $t$ is a term of type $T$ under a context $\Gamma$, and $\gamma$ is a unary substitution in the interpretation of $\Gamma$. Then we can say that $\gamma\; t$ is in the unary relation at the type $T$.
+
+However, since the binary relation involves an external observer, we need additional structure to formally specify it. This needed structure is a subclass of semirings which we call \emph{noninterfering semirings}:
+
+\begin{definition}[Noninterfering Semiring]
+    A noninterfering semiring $\mathcal R$ is a pre-ordered semring with the following additional axioms:
+    \begin{itemize}
+        \item Weak idempotence of multiplication: $r\cdot r\le r$
+        \item Antisymmetry: $(r\le s)\wedge(s\le r)\implies r=s$
+        \item Multiplicative unit is minimal: $1\le r$
+        \item Additive unit is maximal: $r\le 0$
+    \end{itemize}
+    where $r,s$ are two elements of the semiring $\mathcal R$.
+\end{definition}
+
+\begin{proposition}[Properties of Noninterfering Semiring]
+    For a noninterfering semiring and two elements $r_1,r_2,s$ in it, we have the following properties:
+    \begin{itemize}
+        \item Decreasing addition: if $r_1\le r_2$, then $r_1+s\le r_2$.
+        \item Increasing multiplication: if $r_1\le r_2$, then $r_1\le s\cdot r_2$ and $r_1\le r_2\cdot s$.
+    \end{itemize}
+    We can also derive the minimality of $1$ and the maximality of $0$ from these two properties respectively.
+\end{proposition}
+
+\begin{proposition}[Security Semiring is Noninterfering]
+    The induced semiring $\secure$ is noninterfering, with
+    \begin{itemize}
+        \item Weak idempotence of multiplication trivially follows the property of $\sqcup$.
+        \item Antisymmetry follows from the ordering.
+        \item Minimality of $1$ and the maximality of $0$ follows from the definition of $\secure$.
+    \end{itemize}
+\end{proposition}
+
+Now we can formally give the binary version of the fundamental theorem on noninterfering semirings:
+
+\begin{theorem}[Binary Fundamental Theorem]
+    For all well-typed terms $\Gamma\vdash t:T$ with a semiring $\mathcal R$ parameterizing the calculus that is \emph{noninterfering}, if $(\gamma_1,\gamma_2)\in\llbracket\Gamma\rrbracket^{adv}$, then we have $(\gamma_1\; t,\gamma_2\; t)\in\llbracket T\rrbracket^{adv}_\cale$. Where $\gamma_1\; t$ and $\gamma_2\; t$ represents the result of applying the multi-substitution of the mapping from variables to terms given by $\gamma_1$ and $\gamma_2$.
+\end{theorem}
+
+With the fundamental theorem established, we can now state the final theorem of noninterference:
+
+\begin{theorem}[Noninterfernce of \textsc{FlowSTLC}]
+    For all judgements $x:[A]_r\vdash t:\gradedt{adv}{\bool}$ where $adv\le r$ and $adv\ne r$, then given $\emptyset\vdash v_1:T$ and $\emptyset\vdash v_2:T$ then $[x\mapsto v_1]t\equiv [x\mapsto v_2]t$. Where $\equiv$ is the full $\beta$-equality of terms.
+\end{theorem}
+
+For a complete proof for the fundamental theorem and the noninterference theorem, please refer to the appendix.
+
 \section{Bidirectional Type Checking Algorithm}
+
+So far we have only specified the typing system of \textsc{FlowSTLC} in a declarative manner, but for actual implementation we need an algorithmic system. In this chapter we introduce the bidirectional typing for \textsc{FlowSTLC}. The typing rules are defined by two mutually recursive functions for \emph{checking} and \emph{synthesis}, of the form:
+
+\begin{equation}
+    \begin{split}
+        (\textit{checking})\quad&\Phi\vdash t\checking T\dashv\Delta\\
+        (\textit{synthesis})\quad&\Phi\vdash t\synthesis T\dashv\Delta
+    \end{split}
+\end{equation}
+
+Here we following a similar approach to Hodas \cite{hodas1994logic} and Polakow \cite{polakow2015embedding}. We split the context into two parts:
+
+\begin{itemize}
+    \item Type context $\Phi$: maps variables to types, this is the input to the algorithm.
+    \item Usage context $\Delta$: records exactly the variables used in $t$ and their computed grades, this is the output of the algorithm.
+\end{itemize}
+
+To support the semiring structure of $\secure$, we define the following pointwise operations on the usage context $\Delta$:
+
+\begin{definition}[Operations on Usage Contexts]\leavevmode
+    \begin{itemize}
+        \item Zero $0$: maps all variables to $\srzero$.
+        \item Addition $\Delta_1+\Delta_2$: returns $\Delta$ where $\Delta(x)=\Delta_1(x)+\Delta_2(x)$.
+        \item Scaling $r\cdot\Delta$: returns $\Delta$ where $\Delta(x)=r\cdot\Delta_1(x)$.
+        \item Joining $\Delta_1\cup\Delta_2$: returns $\Delta$ where $\Delta(x)=\Delta_1(x)\sqcup\Delta_2(x)$.
+    \end{itemize}
+\end{definition}
+
+Now we introduce the important rules here. For a complete list of the bidirectional typing rules, please refer to appendix. 
+
+The variable rule generates a usage of $\srone$ for the variable used and $\srzero$ for everything else:
+
+\begin{prooftree}
+    \AXC{$\Phi(x)=T$}
+    \RightLabel{\textsc{BD-Var}}
+    \UIC{$\Phi\vdash x\checking T\dashv\{x:\srone\}$}
+\end{prooftree}
+
+We can swith from synthesis to checking seamlessly:
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\synthesis T_1\dashv\Delta$}
+    \AXC{$T_1=T_2$}
+    \RightLabel{\textsc{BD-Switch}}
+    \BIC{$\Phi\vdash t\checking T_2\dashv\Delta$}
+\end{prooftree}
+
+For function abstractions, we check the function body against its return type. The critical check here is that the calculated usage of the bound variable $x$ must $\le$ the declared grade $r$ on the arrow:
+
+\begin{prooftree}
+    \AXC{$\Phi,x:T_1\vdash t\checking T_2$}
+    \AXC{$\Delta(x)\le r$}
+    \RightLabel{\textsc{BD-Abs}}
+    \BIC{$\Phi\vdash\lam{x:T_1}{t}\checking T_1\to^r T_2\dashv\Delta\setminus\{x\}$}
+\end{prooftree}
+
+The function application synthesizes the function type, checks type of the argument, then scales the argument's usage by the function's input grade $r$:
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t_1\synthesis T_1\to^r T_2\dashv\Delta_1$}
+    \AXC{$\Phi\vdash t_2\checking T_1\dashv\Delta_2$}
+    \RightLabel{\textsc{BD-App}}
+    \BIC{$\Phi\vdash t_1\; t_2\synthesis T_2\dashv\Delta_1+(r\cdot\Delta_2)$}
+\end{prooftree}
+
+For the graded modalities, the promotion rule scales the entire usage context of the underlying term by $r$:
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\checking T\dashv\Delta$}
+    \RightLabel{\textsc{BD-Pro}}
+    \UIC{$\Phi\vdash[t]\checking\gradedt{r}{T}\dashv r\cdot\Delta$}
+\end{prooftree}
+
+Modality elimination synthesizes the modality type $\gradedt{r}{T}$ and then checks the body. The rule ensures that the usage of the unboxed variable inside the body fits within the grade $r$ provided by the modality type:
+
+\begin{prooftree}
+    \def\defaultHypSeparation{\hskip .0in}
+    \AXC{$\Phi\vdash t_1\synthesis\gradedt{r}{T}\dashv\Delta_1$}
+    \AXC{$\Phi,x:T\vdash t_2\checking T_2\dashv\Delta_2$}
+    \AXC{$\Delta_2(x)\le r$}
+    \TIC{$\Phi\vdash\unp{x}{t_1}{t_2}\checking T_2\dashv\Delta_1+(\Delta_2\setminus\{x\})$}
+\end{prooftree}
+
+For the conditional, we check the types of the condition and both branches. The usage contexts of the branches is joined to ensure we account for the worst-case usage of either execution path. The rule also requires that the guard usage must be scaled by $r\le\srone$ to prevent control-flow attacks:
+
+\begin{prooftree}
+    \def\defaultHypSeparation{\hskip .0in}
+    \AXC{$\Phi\vdash t\checking\bool\dashv\Delta_1$}
+    \AXC{$\Phi\vdash t_1\checking T\dashv\Delta_2$}
+    \AXC{$\Phi\vdash t_2\checking T\dashv\Delta_3$}
+    \TIC{$\Phi\vdash\cond{t}{t_1}{t_2}\checking T\dashv\Delta_1+\Delta_2+\Delta_3$}
+\end{prooftree}
+
+The bidirectional rules for records, natural numbers, booleans, and unit values are trivial to specify and we omit them here.
 
 \section{Implementation and Examples}
 
@@ -799,7 +951,7 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \begin{prooftree}
 	\AXC{$\Gamma_1\vdash t_1:\untt$}
 	\AXC{$\Gamma_2\vdash t_2:T$}
-	\RightLabel{\textsc{T-UnitElim}}
+	\RightLabel{\textsc{T-Unit-Elim}}
 	\BIC{$\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T$}
 \end{prooftree}
 
@@ -818,9 +970,9 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \end{prooftree}
 
 \begin{prooftree}
-\AXC{}
-\RightLabel{\textsc{E-AppAbs}}
-\UIC{$(\lam{x:T}{t})\; v\reduce [x\mapsto v]t$}
+    \AXC{}
+    \RightLabel{\textsc{E-AppAbs}}
+    \UIC{$(\lam{x:T}{t})\; v\reduce [x\mapsto v]t$}
 \end{prooftree}
 
 \begin{prooftree}
@@ -932,6 +1084,124 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	\AXC{}
 	\RightLabel{\textsc{E-IsZero-Succ}}
 	\UIC{$\iszero{\suc t}\reduce\false$}
+\end{prooftree}
+
+\subsubsection{Bidirectional Typing}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\synthesis T_1\dashv\Delta$}
+    \AXC{$T_1=T_2$}
+    \RightLabel{\textsc{BD-Switch}}
+    \BIC{$\Phi\vdash t\checking T_2\dashv\Delta$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi(x)=T$}
+    \RightLabel{\textsc{BD-Var}}
+    \UIC{$\Phi\vdash x\checking T\dashv\{x:\srone\}$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi,x:T_1\vdash t\checking T_2$}
+    \AXC{$\Delta(x)\le r$}
+    \RightLabel{\textsc{BD-Abs}}
+    \BIC{$\Phi\vdash\lam{x:T_1}{t}\checking T_1\to^r T_2\dashv\Delta\setminus\{x\}$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t_1\synthesis T_1\to^r T_2\dashv\Delta_1$}
+    \AXC{$\Phi\vdash t_2\checking T_1\dashv\Delta_2$}
+    \RightLabel{\textsc{BD-App}}
+    \BIC{$\Phi\vdash t_1\; t_2\synthesis T_2\dashv\Delta_1+(r\cdot\Delta_2)$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\checking T\dashv\Delta$}
+    \RightLabel{\textsc{BD-Pro}}
+    \UIC{$\Phi\vdash[t]\checking\gradedt{r}{T}\dashv r\cdot\Delta$}
+\end{prooftree}
+
+\begin{prooftree}
+    \def\defaultHypSeparation{\hskip .0in}
+    \AXC{$\Phi\vdash t_1\synthesis\gradedt{r}{T}\dashv\Delta_1$}
+    \AXC{$\Phi,x:T\vdash t_2\checking T_2\dashv\Delta_2$}
+    \AXC{$\Delta_2(x)\le r$}
+    \TIC{$\Phi\vdash\unp{x}{t_1}{t_2}\checking T_2\dashv\Delta_1+(\Delta_2\setminus\{x\})$}
+\end{prooftree}
+\begin{center}
+    \textsc{BD-Let}
+\end{center}
+
+\begin{prooftree}
+    \AXC{for each $i$, $\Phi\vdash t_i\checking T_i\dashv\Delta_i$}
+    \RightLabel{\textsc{BD-Record}}
+    \UIC{$\Phi\vdash\{l_i=t_i^{i\in 1..n}\}\checking\{l_i:T_i^{i\in 1..n}\}\dashv\sum^n_{i=1}\Delta_i$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\synthesis\{l_i:T_i^{i\in 1..n}\}\dashv\Delta$}
+    \RightLabel{\textsc{BD-Proj}}
+    \UIC{$\Phi\vdash t.l_i\synthesis T_i\dashv\Delta$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{}
+    \RightLabel{\textsc{BD-True}}
+    \UIC{$\Phi\vdash\true\synthesis\bool\dashv\emptyset$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{}
+    \RightLabel{\textsc{BD-False}}
+    \UIC{$\Phi\vdash\false\synthesis\bool\dashv\emptyset$}
+\end{prooftree}
+
+\begin{prooftree}
+    \def\defaultHypSeparation{\hskip .0in}
+    \AXC{$\Phi\vdash t\checking\bool\dashv\Delta_1$}
+    \AXC{$\Phi\vdash t_1\checking T\dashv\Delta_2$}
+    \AXC{$\Phi\vdash t_2\checking T\dashv\Delta_3$}
+    \TIC{$\Phi\vdash\cond{t}{t_1}{t_2}\checking T\dashv\Delta_1+\Delta_2+\Delta_3$}
+\end{prooftree}
+\begin{center}
+    \textsc{BD-Cond}
+\end{center}
+
+\begin{prooftree}
+    \AXC{}
+    \RightLabel{\textsc{BD-Zero}}
+    \UIC{$\Phi\vdash 0\synthesis\nat\dashv\emptyset$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\checking\nat\dashv\Delta$}
+    \RightLabel{\textsc{BD-Succ}}
+    \UIC{$\Phi\vdash\suc t\synthesis\nat\dashv\Delta$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\checking\nat\dashv\Delta$}
+    \RightLabel{\textsc{BD-Pred}}
+    \UIC{$\Phi\vdash\prd t\synthesis\nat\dashv\Delta$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t\checking\nat\dashv\Delta$}
+    \RightLabel{\textsc{BD-IsZero}}
+    \UIC{$\Phi\vdash\iszero t\synthesis\bool\dashv\Delta$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{}
+    \RightLabel{\textsc{BD-Unit}}
+    \UIC{$\Phi\vdash\unt\synthesis\untt\dashv\emptyset$}
+\end{prooftree}
+
+\begin{prooftree}
+    \AXC{$\Phi\vdash t_1\checking\untt\dashv\Delta_1$}
+    \AXC{$\Phi\vdash t_2\checking T\dashv\Delta_2$}
+    \RightLabel{\textsc{BD-Unit-Elim}}
+    \BIC{$\Phi\vdash\une{\unt}{t}\checking T\dashv\Delta_1+\Delta_2$}
 \end{prooftree}
 
 \subsection{Proofs}

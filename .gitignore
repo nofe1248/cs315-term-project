@@ -27,6 +27,8 @@
 *.pdfsync
 *.DS_Store
 *.minted
+*.nav
+*.snm
 
 flowstlc-compiler/target/
 !.mvn/wrapper/maven-wrapper.jar
