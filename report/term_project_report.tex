@@ -40,6 +40,8 @@
 \newcommand\cale{\mathcal{E}}
 \newcommand\checking{\Leftarrow}
 \newcommand\synthesis{\Rightarrow}
+\newcommand\bbrac[1]{\left\llbracket #1\right\rrbracket}
+\newcommand\base{\mathbb{B}}
 
 \newtheorem{definition}{Definition}
 \newtheorem{theorem}{Theorem}
@@ -527,10 +529,11 @@ We first define a type-indexed unary relation $\llbracket T\rrbracket_\calv$ whi
 	\begin{aligned}
 		\llbracket T\rrbracket_\cale &= \{t\mid t\rightsquigarrow^* v\implies v\in\llbracket T\rrbracket_\calv\}\\
 		\llbracket\untt\rrbracket_\calv &= \{ \unt \} \\
-		\llbracket\bool\rrbracket_\calv &= \{\true, \false\} \\
+		\llbracket\bool\rrbracket_\calv &= \{\true, \false, \iszero{n}\} \\
 		\llbracket\nat\rrbracket_\calv &= \{n \mid n \in \mathbb{N}\} \\
 		\llbracket T_1\to^\ell T_2 \rrbracket_\calv &= \{\lambda x.t \mid \forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad[x\mapsto v]t\in\llbracket T_2\rrbracket_\cale\} \\
 		\llbracket\gradedt{\ell}{T}\rrbracket_\calv &= \{[t] \mid t\rightsquigarrow^* v\implies v \in \llbracket T \rrbracket_\cale\}\\
+		\bbrac{\{l_i:T_i^{i\in 1..n}\}}_\calv &= \{\{l_i=t_i^{i\in 1..n}\}\mid\forall i.t_i\reduce^* v_i\implies v_i\in\bbrac{T_i}_\cale\}\\
 		\llbracket\Gamma\rrbracket&=\{\gamma\mid x:[T]_\ell\in\Gamma\wedge[\gamma(x)]\in \llbracket\gradedt{\ell}{T}\rrbracket_\cale\}
 	\end{aligned}
 	$$
@@ -543,15 +546,17 @@ We also define a binary relation which captures \emph{indistinguishability} from
 
 \begin{figure}[H]
 	\centering
+	\small
 	$$
 	\begin{aligned}
 		\llbracket T\rrbracket^{adv}_\cale &= \{(t_1,t_2)\mid t_1\rightsquigarrow^* v_1\wedge t_2\rightsquigarrow^* v_2\implies\\
 		&\qquad\qquad (v_1,v_2)\in\llbracket T\rrbracket^{adv}_\calv\}\\
 		\llbracket\untt\rrbracket^{adv}_\calv &= \{(\unt,\unt)\}\\
-		\llbracket\bool\rrbracket^{adv}_\calv &= \{(b,b)\mid b\in\{\true,\false\}\}\\
+		\llbracket\bool\rrbracket^{adv}_\calv &= \{(b,b)\mid b\in\{\true,\false, \iszero{n}\}\}\\
 		\llbracket\nat\rrbracket^{adv}_\calv &= \{(n,n)\mid n\in\mathbb N\}\\
 		\llbracket T_1\to^\ell T_2\rrbracket^{adv}_\calv &=
-		\{(\lambda x.t_1,\lambda x.t_2)\mid (\forall v,v'.([v],[v'])\in\llbracket \gradedt{\ell}{T_1}\rrbracket^{adv}_\cale\\
+		\{(\lambda x.t_1,\lambda x.t_2)\mid\\
+		&\quad(\forall v,v'.([v],[v'])\in\llbracket \gradedt{\ell}{T_1}\rrbracket^{adv}_\cale\\
 		&\qquad\implies ((x\mapsto v)t_1,(x\mapsto v')t_2)\in\llbracket T_2\rrbracket^{adv}_\cale)\\
 		&\qquad\wedge(\forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_1\in\llbracket T_2\rrbracket_\cale)\\
 		&\qquad\wedge(\forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_2\in\llbracket T_2\rrbracket_\cale)\}\\
@@ -559,10 +564,13 @@ We also define a binary relation which captures \emph{indistinguishability} from
 			&\{([v_1,v_2])\mid (v_1,v_2)\in\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\cale\}\\&\quad\ell\le adv\\
 			&\{([v_1,v_2])\mid v_1\in\llbracket\gradedt{\ell}{T}\rrbracket_\cale\wedge v_2\in\llbracket\gradedt{\ell}{T}\rrbracket_\cale\}\\&\quad\neg\ell\le adv
 		\end{aligned}\right.\\
+		\bbrac{\{l_i:T_i^{i\in 1..n}\}}^{adv}_\calv &= \{(\{l_i=t_i^{i\in 1..n}\},\{l_i=t_i'^{i\in 1..n}\})\mid\\
+		&\quad\forall i.t_i\reduce^* v_i\wedge t_i'\reduce^* v_i'\implies\\ &\qquad(v_i,v_i')\in\bbrac{T_i}^{adv}_\cale\}\\
 		\llbracket\Gamma\rrbracket^{adv}&=\{(\gamma_1,\gamma_2)\mid x:[T]_\ell\in\Gamma\\
 		&\qquad\wedge[\gamma_1(x),\gamma_2(x)]\in\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\cale\}
 	\end{aligned}
 	$$
+	\normalsize
 	\caption{Binary value, expression, and context relations}
 \end{figure}
 
@@ -620,10 +628,10 @@ Now we can formally give the binary version of the fundamental theorem on nonint
 With the fundamental theorem established, we can now state the final theorem of noninterference:
 
 \begin{theorem}[Noninterfernce of \textsc{FlowSTLC}]
-    For all judgements $x:[A]_r\vdash t:\gradedt{adv}{\bool}$ where $adv\le r$ and $adv\ne r$, then given $\emptyset\vdash v_1:T$ and $\emptyset\vdash v_2:T$ then $[x\mapsto v_1]t\equiv [x\mapsto v_2]t$. Where $\equiv$ is the full $\beta$-equality of terms.
+    For all judgements $x:[T_1]_r\vdash t:\gradedt{adv}{\base}$ where $adv\le r$ and $adv\ne r$, then given $\emptyset\vdash v_1:T$ and $\emptyset\vdash v_2:T$ then $[x\mapsto v_1]t\equiv [x\mapsto v_2]t$. Where $\equiv$ is the full $\beta$-equality of terms and $\base$ denotes an arbitrary base type.
 \end{theorem}
 
-For a complete proof for the fundamental theorem and the noninterference theorem, please refer to the appendix.
+For a complete proof for the fundamental theorem and the noninterference theorem, please refer to the \hyperref[app-b]{Appendix B}.
 
 \section{Bidirectional Type Checking Algorithm}
 
@@ -783,12 +791,15 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 		| $\prd{n}$ : \textit{predecessor}
 		;;
 		$T$ : \textsf{Type} ::=
-		| \untt : \textit{unit type}
-		| \nat : \textit{natural number type}
-		| \bool : \textit{boolean type}
+		| $\base$ : \textit{base type}
 		| $\{l_i\colon T_i^{i\in1..n}\}$ : \textit{record type}
 		| $T\to^\ell T$ : \textit{function type}
 		| $\gradedt{r}{T}$ : \textit{graded modality}
+		;;
+		$\base$ : \textsf{Base type} ::=
+		| \untt : \textit{unit type}
+		| \nat : \textit{natural number type}
+		| \bool : \textit{boolean type}
 		;;
 		$v$ : \textsf{Value} ::=
 		| $\lam{x\colon T}{t}$ : \textit{abstraction value}
@@ -1254,68 +1265,133 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	Thus the security level algebra is a semiring.
 \end{proof}
 
-\subsubsection{Well-typed substitution}
+\subsubsection{Unary Fundamental Theorem}
+
 \begin{proof}
-	By induction on a derivation of the form $\Gamma,x:[T_1]_\ell\vdash t_2:T_2$. For a given derivation, we proceed by cases on the final typing rule used in the proof.
-	\begin{itemize}		
-		\item\textbf{Case} \textsc{T-Var}: $t_2=z$ with $z:T_1\in(\Gamma,x:[T_1]_\ell)$
+	By induction on the typing derivation of $\Gamma\vdash t:T$
+	\begin{itemize}
+		\item \emph{Case} \textsc{T-Var}: $\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$.
 		
-		We need to consider two subcases: 
-		\begin{enumerate}
-			\item if $z=x$, then $[x\mapsto t_1]z=t_1$, 
-		\end{enumerate}	
+		Let $\gamma\in\llbracket\srzero\cdot\Gamma,x:[T]_\srone\rrbracket$. By the definition of the unary relation, $\gamma$ maps $x$ s.t. $\llbracket\gamma(x)\rrbracket\in\bbrac{\gradedt{\srone}{T}}_\cale$. The unary relation for graded modalities $\bbrac{\gradedt{\srone}{T}}_\cale$ ignores the grade $r$ and contains terms that, when unboxed, are in $\bbrac{T}_\cale$. Therefore, $\gamma(x)\in\bbrac{T}_\cale$. Since the term is just $x$, $\gamma\; t=\gamma(x)$, satisfying the goal.
 		
-		\item\textbf{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
+		\item \emph{Case} \textsc{T-Abs}: $\Gamma\vdash\lam{x:T_1}{t}:T_1\to^r T_2$ derived from $\Gamma,x:[T_1]_r\vdash t:T_2$.
 		
-		By convention we may assume that $x\ne y$ and $y\notin FV(s)$. Then by the permutation lemma and weakening rule, we have $\Gamma,\Delta,y:T_2,x:S\vdash t_1:T_1$. Again we apply the two rules on the assumption $\Delta\vdash s:S$ to get $\Gamma,\Delta,y:T_2\vdash s:S$. By the induction hypothesis, we have $\Gamma,\Delta,y:T_2\vdash [x\mapsto s]t_1:T_1$, then by \textsc{T-Abs} $\Gamma,\Delta\vdash \lam{y:T_2}{[x\mapsto s]t_1}:T_2\to T_1$, and this is our desired result.
+		Assume $\gamma\in\bbrac{\Gamma}$, we must show that $\gamma(\lam{x:T_1}{t})\in\bbrac{T_1\to^r T_2}_\cale$. Since $\lam{x:T_1}{t}$ is a value, substituting $v$ into the body yields an expression in $\bbrac{T_2}_\cale$. Let $v\in\bbrac{\gradedt{r}{T_1}}_\cale$. Construct the extended substitution $\gamma'=\gamma,x\mapsto v$. By definition, $\gamma'\in\bbrac{\Gamma,x:[T_1]_r}$. By the induction hypothesis on the premise $\Gamma,x:[T_1]_r\vdash t:T_2$, we have $\gamma'\; t\in\bbrac{T_2}_\cale$. Since $\gamma'\; t=[x\mapsto v](\gamma\; t)$, the condition holds.
 		
-		\item\textbf{Case} \textsc{T-App}: $t=t_1\; t_2$, $\Gamma,x:S\vdash t_1:T_2\to T_1$, $\Gamma,x:S\vdash t_2:T_2$, $T=T_1$
+		\item \emph{Case} \textsc{T-App}: $\Gamma_1+r\cdot\Gamma_2\vdash t_1\; t_2:T_2$.
 		
-		By the induction hypothesis, we have $\Gamma,\Delta\vdash [x\mapsto s]t_1:T_2\to T_1$ and $\Gamma,\Delta\vdash [x\mapsto s]t_2:T_2$. Then by \textsc{T-App}, $\Gamma,\Delta\vdash [x\mapsto s]t_1\; [x\mapsto s]t_2:T_1$, i.e., $\Gamma,\Delta\vdash [x\mapsto s](t_1\; t_2):T_1$.
+		Assume $\gamma\in\bbrac{\Gamma_1+r\cdot\Gamma_2}$. By the definition of context addition and scalar multiplication, $\gamma$ can be viewed as covering the requirements of both $\Gamma_1$ and $r\cdot\Gamma_2$. By the induction hypothesis on $t_1$, $\gamma\; t_1\in\bbrac{T_1\to^r T_2}_\cale$. This implies $\gamma\; t_1$ reduces to a value $\lam{x:T_1}{t}$ in $\bbrac{T_1\to^r T_2}_\calv$. By the induction hypothesis on $t_2$, $\gamma\; t_2\in\bbrac{T_1}_\cale$. The definition of the function value relation states that applying such a function to an argument $v$ (where $[v]\in\bbrac{\gradedt{r}{T_1}}_\cale$) yields a result in $\bbrac{T_2}_\cale$. Since $\gamma\; t_2\in\bbrac{T_1}_\cale$, its corresponding modality $[\gamma\; t_2]$ is in $\bbrac{\gradedt{r}{T_1}}_\cale$. Thus, $(\gamma\; t_1)\; (\gamma\; t_2)\in\bbrac{T_2}_\cale$.
 		
-		\item\textbf{Case} \textsc{T-Weak}: $t=t_1$, $\Gamma'\vdash t_1:T$ where $\Gamma'\subseteq(\Gamma,x:S)$ and $x:S\in\Gamma'$
+		\item \emph{Case} \textsc{T-Pro}: $r\cdot\Gamma\vdash [t]:\gradedt{r}{T}$.
 		
-		By the induction hypothesis, we have $\Gamma',\Delta\vdash [x\mapsto s]t_1:T$, then apply the \textsc{T-Weak}, we have $\Gamma,\Delta\vdash [x\mapsto s]t_1:T$.
+		By induction hypothesis, $\gamma\; t\in\bbrac{T}_\cale$. By the definition, the unary relation $\bbrac{\gradedt{r}{T}}_\calv$ consists of terms $[u]$ where $[u]\in\bbrac{T}_\cale$. Thus, we have $[\gamma\; t]\in\bbrac{\gradedt{r}{T}}_calv$, so $\gamma\; [t]\in\bbrac{\gradedt{r}{T}}_\cale$.
 		
-		\item\textbf{Case} \textsc{T-Der}: $t=t_1$, $T=T_1$, $\Gamma,x:S,y:T_2\vdash t_1:T_1$
+		\item \emph{Case} \textsc{T-Let}: $\Gamma_1+\Gamma_2\vdash\unp{x}{t_1}{t_2}:T_2$.
 		
-		By the induction hypothesis and permutation lemma, we have $\Gamma,\Delta,y:T_2\vdash [x\mapsto s]t_1:T_1$. Then by the \text{T-Der} rule, we immediately have our desired result $\Gamma,\Delta,y:[T_2]_\public\vdash [x\mapsto s]t_1:T_1$.
+		By the induction hypothesis, $\gamma\; t_1\in\bbrac{\gradedt{r}{T_1}}_\cale$, so $\gamma\; t_1\reduce^*[v]$ with $v\in\bbrac{T_1}_\cale$. By the induction hypothesis on $t_2$ with $\gamma[x\mapsto v]$, we have $\gamma'\; t_2\in\bbrac{T_2}_\cale$.
 		
-		\item\textbf{Case} \textsc{T-Pro}:
+		\item \emph{Case} \textsc{T-Approx}: $\Gamma,x:[T_1]_s:t:T_2$ where $s\le r$.
 		
-		This case is impossible since \textsc{T-Pro} rule requires a purely graded context, and $x:S$ would violate the premise.
+		The unary relation for $\gradedt{r}{T}$ does not depend on the value of $r$. Thus, if $\gamma(x)\in\bbrac{\gradedt{s}{T_1}}_\cale$, it is also in $\bbrac{\gradedt{r}{T_1}}_\cale$. The induction hypothesis applies directly.
 		
-		\item\textbf{Case} \textsc{T-Let}: $t=\unp{y}{t_1}{t_2}$, $\Gamma_1,x:S\vdash t_1:\gradedt{\ell}{T_1}$, $\Gamma_2,y:[T_1]_\ell,x:S\vdash t_2:T_2$, $T=T_2$
+		\item \emph{Case} \textsc{T-Record}: $\Gamma\vdash\{l_i=t_i^{i\in 1..n}:\{l_i:T_i^{i\in 1..n}\}\}$.
 		
-		Again by convention we may assume that $x\ne y$ and $y\notin FV(s)$. First we apply the induction hypothesis to get $\Gamma_1,\Delta\vdash [x\mapsto s]t_1:\gradedt{\ell}{T_1}$ and $\Gamma_2,\Delta,y:[T_1]_\ell\vdash [x\mapsto s]t_2:T_2$. And it follows from the \textsc{T-Let} rule that $(\Gamma_1+\Gamma_2),\Delta\vdash\unp{y}{[x\mapsto s]t_1}{[x\mapsto s]t_2}:T_2$, i.e., $(\Gamma_1+\Gamma_2),\Delta\vdash[x\mapsto s](\unp{y}{t_1}{t_2}):T_2$.
+		By the induction hypothesis, for all $i\in 1..n$, $\gamma\; t_i\in\bbrac{T_i}_\cale$. Thus, $\{l_i=t_i^{i\in 1..n}\}\in\bbrac{\{l_i:T_i^{i\in 1..n}\}}_\calv$.
 		
-		\item\textbf{Case} \textsc{T-Approx}: $t=t_1$, $\Gamma,x:S,y:[T_2]_{\ell_1}\vdash t_1:T_1$, $\ell_1\sqsubseteq\ell_2$, $T=T_1$.
+		\item \emph{Case} \textsc{T-Proj}: $\Gamma\vdash t.l_i:T_i$.
 		
-		From the induction hypothesis and permutation lemma we can get $\Gamma,\Delta,y:[T_2]_{\ell_1}\vdash[x\mapsto s]t_1:T_1$. Then we apply the \textsc{T-Approx} rule to get our desired result $\Gamma,\Delta,y:[T_2]_{\ell_2}\vdash[x\mapsto s]t_1:T_1$.
+		By the induction hypothesis, $\gamma\; t\reduce^*\{l_i=v_i^{i\in 1..n}\}$ where $v_i\in\bbrac{T_i}_\calv$. So $t.l_i\in\bbrac{T_i}_\calv$.
+		
+		\item \emph{Case} \textsc{T-True}: $\srzero\cdot\Gamma\vdash\true:\bool$.
+		
+		Trivial since $\true\in\bbrac{\bool}_\calv$ by definition.
+		
+		\item \emph{Case} \textsc{T-False}: $\srzero\cdot\Gamma\vdash\false:\bool$.
+		
+		Trivial since $\false\in\bbrac{\bool}_\calv$ by definition.
+		
+		\item \emph{Case} \textsc{T-Cond}: $r\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T_1$.
+		
+		By the induction hypothesis, $\gamma\; t_1\in\bbrac{\bool}_\cale$. If $\gamma\; t_1\reduce^*\true$, we use the induction hypothesis on $t_2$, which gives $\gamma\; t_2\in\bbrac{T_1}_\cale$, so the result is in $\bbrac{T_1}_\cale$. If $\gamma\; t_1\reduce^*\false$, we use the induction hypothesis on $t_3$, which also results in $\bbrac{T_1}_\cale$.
+		
+		\item \emph{Case} \textsc{T-Zero}: $\srzero\cdot\Gamma\vdash 0:\nat$.
+		
+		Trivial since $0\in\bbrac{\nat}_\calv$ by definition.
+		
+		\item \emph{Case} \textsc{T-Succ}: $\srzero\cdot\Gamma\vdash\suc{n}:\nat$.
+		
+		Trivial since $\suc{n}\in\bbrac{\nat}_\calv$ by definition.
+		
+		\item \emph{Case} \textsc{T-Pred}: $\srzero\cdot\Gamma\vdash\prd{n}:\nat$.
+		
+		Trivial since $\prd{n}\in\bbrac{\nat}_\calv$ by definition.
+		
+		\item \emph{Case} \textsc{T-IsZero}: $\srzero\cdot\Gamma\vdash\iszero{n}:\bool$.
+		
+		Trivial since $\iszero{n}\in\bbrac{\bool}_\calv$ by definition.
+		
+		\item \emph{Case} \textsc{T-Unit}: $\srzero\cdot\Gamma\vdash\unt:\untt$.
+		
+		Trivial since $\unt\in\bbrac{\untt}_\calv$ by definition.
+		
+		\item \emph{Case} \textsc{T-Unit-Elim}: $\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T_2$.
+		
+		We have $\gamma\; t_1\reduce^*\unt$. Applying the induction hypothesis to $t_2$ yields the result in $\bbrac{T_2}_\cale$.
 	\end{itemize}
 \end{proof}
 
-\subsubsection{Well-typed Graded Substitution}
+\subsubsection{Binary Fundamental Theorem}
+
 \begin{proof}
-	Similar to how we prove the regular substitution lemma, we proceed by induction on a derivation of the form $\Gamma,x:[S]_\ell\vdash t:T$.
-    \begin{itemize}
-        \item \textbf{Case} \textsc{T-Var}: $t=z$ with $z:T\in(\Gamma,x:[S]_\ell)$
-        
-        Unlike the case for regular substitution lemma, $z$ cannot be $x$ since there is not rule that can introduce $\Gamma,\ell\cdot\Delta\vdash s:S$. So $z\ne x$, and we have $[x\mapsto s]z\to z$, and the result is immediate.
-        \item \textbf{Case} \textsc{T-Abs}: $t=\lam{y:T_2}{t_1}$, $T=T_2\to T_1$, $\Gamma,x:[S]_\ell,y:T_2\vdash t_1:T_1$
-        
-        By convention we may assume that $x\notin FV(s)$. Then by
-        \item \textbf{Case} \textsc{T-App}:
-        \item \textbf{Case} \textsc{T-Weak}:
-        \item \textbf{Case} \textsc{T-Der}:
-        \item \textbf{Case} \textsc{T-Pro}:
-        \item \textbf{Case} \textsc{T-Let}:
-        \item \textbf{Case} \textsc{T-Approx}:
-    \end{itemize}
+	By induction on the typing derivation.
+	\begin{itemize}
+		\item \emph{Case} \textsc{T-Var}:
+		
+		\item \emph{Case} \textsc{T-Abs}:
+		
+		\item \emph{Case} \textsc{T-App}:
+		
+		\item \emph{Case} \textsc{T-Pro}:
+		
+		\item \emph{Case} \textsc{T-Let}:
+		
+		\item \emph{Case} \textsc{T-Approx}:
+		
+		\item \emph{Case} \textsc{T-Record}:
+		
+		\item \emph{Case} \textsc{T-Proj}:
+		
+		\item \emph{Case} \textsc{T-True}:
+		
+		\item \emph{Case} \textsc{T-False}:
+		
+		\item \emph{Case} \textsc{T-Cond}:
+		
+		\item \emph{Case} \textsc{T-Zero}:
+		
+		\item \emph{Case} \textsc{T-Succ}:
+		
+		\item \emph{Case} \textsc{T-Pred}:
+		
+		\item \emph{Case} \textsc{T-IsZero}:
+		
+		\item \emph{Case} \textsc{T-Unit}:
+		
+		\item \emph{Case} \textsc{T-Unit-Elim}:
+	\end{itemize}
 \end{proof}
 
-\subsubsection{Type Preservation}
+\subsubsection{Noninterference of \textsc{FlowSTLC}}
+
 \begin{proof}
+	We need to substitute $v_1$ and $v_2$ for $x$. So we must show that the pair of environments $(\{x\mapsto v_1\},\{x\mapsto v_2\})$ is in the binary context relation $\bbrac{x:[T]_s}^{adv}$. This requires us to show $([v_1],[v_2])\in\bbrac{\gradedt{s}{T}}^{adv}_\cale$. 
 	
+	Given $adv\le s$ and $adv\ne s$, we check if $s\le adv$ (is the input observable?). If $s\le adv$, combined with $adv\le s$ and the antisymmmetry axiom of the noninterfering semiring, we would have $s=adv$. But the premise states that $adv\ne s$. Therefore we have $\neg(s\le adv)$.
+	
+	From $\neg(s\le adv)$, the definition of the graded modality relation $\bbrac{\gradedt{s}{T}}^{adv}_\cale$ simplifies to the unary check $\{([u_1],[u_2])\mid u_1\in\bbrac{[T]}_\cale\wedge u_2\in\bbrac{[T]}_\cale\}$. By the Unary Fundamental Theorem. since $v_1$ and $v_2$ are well-typed terms, they are in $\bbrac[T]_\cale$. Thus, the inputs are validly related in the context $(\gamma_1,\gamma_2)\in\bbrac{x:[T]_s}^{adv}$.
+	
+	By the Binary Fundamental Theorem, the results are related at the output type: $([x\mapsto v_1]t,[x\mapsto v_2])\in\bbrac{\gradedt{adv}{\base}}^{adv}_\cale$. The output has a grade $adv$ and clearly by reflexivity $adv\le adv$. Therefore, the relation uses the observable case $\{([u_1],[u_2])\mid(u_1,u_2)\in\bbrac{\base}^{adv}_\cale\}$. This implies the unboxed terms $u_1,u_2$ are related in $\bbrac{\base}^{adv}_\cale$.
+	
+	By the definition of the binary relation at base types, the terms reduce to identical values, so the equality $[x\mapsto v_1]t\equiv[x\mapsto v_2]t$ holds.
 \end{proof}
 \end{document}
