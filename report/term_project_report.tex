@@ -1345,40 +1345,82 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \begin{proof}
 	By induction on the typing derivation.
 	\begin{itemize}
-		\item \emph{Case} \textsc{T-Var}:
-		
-		\item \emph{Case} \textsc{T-Abs}:
-		
-		\item \emph{Case} \textsc{T-App}:
-		
-		\item \emph{Case} \textsc{T-Pro}:
-		
-		\item \emph{Case} \textsc{T-Let}:
-		
-		\item \emph{Case} \textsc{T-Approx}:
-		
-		\item \emph{Case} \textsc{T-Record}:
-		
-		\item \emph{Case} \textsc{T-Proj}:
-		
-		\item \emph{Case} \textsc{T-True}:
-		
-		\item \emph{Case} \textsc{T-False}:
-		
-		\item \emph{Case} \textsc{T-Cond}:
-		
-		\item \emph{Case} \textsc{T-Zero}:
-		
-		\item \emph{Case} \textsc{T-Succ}:
-		
-		\item \emph{Case} \textsc{T-Pred}:
-		
-		\item \emph{Case} \textsc{T-IsZero}:
-		
-		\item \emph{Case} \textsc{T-Unit}:
-		
-		\item \emph{Case} \textsc{T-Unit-Elim}:
-	\end{itemize}
+        \item \emph{Case} \textsc{T-Var}: $\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$.
+        
+        The inputs are related at $\bbrac{\gradedt{\srone}{T}}^{adv}_\calv$. Since $\srone\le adv$ by the minimality of $\srone$. We use the observable case of the modality relation, this gets us $(v_1,v_2)\in\bbrac{T}^{adv}_\cale$
+        
+        \item \emph{Case} \textsc{T-Abs}: $\Gamma\vdash\lam{x:T_1}{t}:T_1\to^r T_2$, $\Gamma,x:[T_1]_r\vdash t:T_2$.
+        
+        For $(u_1,u_2)\in\bbrac{\gradedt{r}{T_1}}^{adv}_\calv$, the induction hypothesis on the function body $t$ gives $(\gamma_1[x\mapsto u_1\; t,\gamma_2[x\mapsto u_2]\; t])\in\bbrac{T_2}^{adv}_\cale$, which satisfies the goal.
+        
+        \item \emph{Case} \textsc{T-App}: $\Gamma_1+r\cdot\Gamma_2\vdash t_1\; t_2:T_2$.
+        
+        By the induction hypothesis, we have $(\gamma_1\; t_1,\gamma_2\; t_1)\in\bbrac{T_1\to^r T_2}^{adv}_\cale$ and $(\gamma_1\; t_2,\gamma_2\; t_2)\in\bbrac{T_1}^{adv}_\cale$, which implies their promotions are related in $\bbrac{\gradedt{r}{T_1}}^{adv}_\cale$. Applying the function binary relation yields the result in $\bbrac{T_2}^{adv}_\cale$.
+        
+        \item \emph{Case} \textsc{T-Pro}: $r\cdot\Gamma\vdash [t]:\gradedt{r}{T}$.
+        
+        We have 2 subcases to consider:
+        \begin{itemize}
+            \item \emph{Subcase} $r\le adv$: We need $(\gamma_1\; t,\gamma_2\; t)\in\bbrac{T}^{adv}_\cale$. The induction hypothesis on $t$ requires inputs to be related at $s$ (for $x:[T]_s\in\Gamma$). We have inputs at $r\cdot s$. Since $r\le adv$ and $s\le adv$, $r\cdot s\le adv\cdot adv\le adv$ by the weak idempotence. Thus, the context is sufficiently related.
+            \item \emph{Subcase} $\neg(r\le adv)$: The relation is satisfied if $\gamma_1\; t,\gamma_2\; t\in\bbrac{T}_\cale$, which holds by the Unary Fundamental Theorem.
+        \end{itemize}
+        
+        \item \emph{Case} \textsc{T-Let}: $\Gamma_1+\Gamma_2\vdash\unp{x}{t_1}{t_2}:T_2$.
+        
+        If the eliminated modality has grade $r\le adv$, the unwrapped values are related by the observable case of the modality binary relation. If $\neg(r\le adv)$, the unboxed values are only required to be unarily well-typed, and the result of $t_2$ will also be $\secret$ as the grade of the result will necessarily not be less or equal than $adv$. Thus, the goal is satisfied.
+        
+        \item \emph{Case} \textsc{T-Approx}: $\Gamma,x:[T_1]_s:t:T_2$ where $s\le r$.
+        
+        If $r\le adv$, then $s\le adv$. If the inputs were related at $r$, they are related at $s$ by the monotonicity of the binary relation.
+        
+        \item \emph{Case} \textsc{T-Record}: $\Gamma\vdash\{l_i=t_i^{i\in 1..n}:\{l_i:T_i^{i\in 1..n}\}\}$.
+        
+        By the induction hypothesis, for all $i\in 1..n$, we have $(\gamma_1\; t_i,\gamma_2\; t_i')\in\bbrac{T_i}^{adv}_\cale$, combining these we get $(\{l_i=t_i^{i\in 1..n}\},\{l_i=t_i'^{i\in 1..n}\})\in\bbrac{\{l_i:T_i^{i\in 1..n}\}}^{adv}_\cale$.
+        
+        \item \emph{Case} \textsc{T-Proj}: $\Gamma\vdash t.l_i:T_i$.
+        
+        By the induction hypothesis, $t=\{l_i=t_i^{i\in 1..n}\}$ with $(\gamma_1\; t_i,\gamma_2\; t_i)\in\bbrac{T_i}^{adv}_\cale$, we have $(\gamma_1\; (t.l_i),\gamma_2\; (t.l_i))\in\bbrac{T_i}^{adv}_\cale$, satisfying the goal.
+        
+        \item \emph{Case} \textsc{T-True}: $\srzero\cdot\Gamma\vdash\true:\bool$.
+        
+        Trivial since $(\true,\true)\in\bbrac{\bool}^{adv}_\calv$ by definition.
+        
+        \item \emph{Case} \textsc{T-False}: $\srzero\cdot\Gamma\vdash\false:\bool$.
+        
+        Trivial since $(\false,\false)\in\bbrac{\bool}^{adv}_\calv$ by definition.
+        
+        \item \emph{Case} \textsc{T-Cond}: $r\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T_1$.
+        
+        We have two subcases to consider:
+        \begin{itemize}
+            \item \emph{Subcase} $r\le adv$: Then $\gamma_1\; t_1$ and $\gamma_2\; t_1$ must result in the same boolean value. Thus both execution take the same branch, and the induction hypothesis on the executed branch applies.
+            \item \emph{Subcase} $\neg(r\le adv)$: The branches might differ. However, since the result $T_1$ must be at a grade that is also secret since $\neg(r'\le adv)$, the relation is satisfied via the Unary Fundamental Theorem.
+        \end{itemize}
+        
+        \item \emph{Case} \textsc{T-Zero}: $\srzero\cdot\Gamma\vdash 0:\nat$.
+        
+        Trivial since $(0,0)\in\bbrac{\nat}^{adv}_\calv$ by definition.
+        
+        \item \emph{Case} \textsc{T-Succ}: $\srzero\cdot\Gamma\vdash\suc{n}:\nat$.
+        
+        Trivial since $(\suc{n},\suc{n})\in\bbrac{\nat}^{adv}_\calv$ by definition.
+        
+        \item \emph{Case} \textsc{T-Pred}: $\srzero\cdot\Gamma\vdash\prd{n}:\nat$.
+        
+        Trivial since $(\prd{n},\prd{n})\in\bbrac{\nat}^{adv}_\calv$ by definition.
+        
+        \item \emph{Case} \textsc{T-IsZero}: $\srzero\cdot\Gamma\vdash\iszero{n}:\bool$.
+        
+        Trivial since $(\iszero{n},\iszero{n})\in\bbrac{\bool}^{adv}_\calv$ by definition.
+        
+        \item \emph{Case} \textsc{T-Unit}: $\srzero\cdot\Gamma\vdash\unt:\untt$.
+        
+        Trivial since $(\unt,\unt)\in\bbrac{\untt}^{adv}_\calv$ by definition.
+        
+        \item \emph{Case} \textsc{T-Unit-Elim}: $\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T_2$.
+        
+        Follows immediately from the induction hypothesis on the body $t_2$.
+    \end{itemize}
 \end{proof}
 
 \subsubsection{Noninterference of \textsc{FlowSTLC}}
