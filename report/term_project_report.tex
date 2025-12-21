@@ -198,7 +198,7 @@ The next three rules build the structure of the security label semiring:
 	\caption{Grade Rules in \textsc{FlowSTLC}}
 \end{figure}
 
-The \emph{Promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix A.3}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to relax the constraint if $\ell_2\sqsubseteq\ell_1$.
+The \emph{promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix A.3}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to relax the constraint if $\ell_2\sqsubseteq\ell_1$.
 
 The rules for record and projection are based on the book of Pierce and Benjamin \cite{pierce2002types}. Since \textsc{FlowSTLC} has a simply-typed base, there are no subtyping rules for record types:
 
@@ -732,7 +732,7 @@ Modality elimination synthesizes the modality type $\gradedt{r}{T}$ and then che
     \TIC{$\Phi\vdash\unp{x}{t_1}{t_2}\checking T_2\dashv\Delta_1+(\Delta_2\setminus\{x\})$}
 \end{prooftree}
 
-For the conditional, we check the types of the condition and both branches. The usage contexts of the branches is joined to ensure we account for the worst-case usage of either execution path. The rule also requires that the guard usage must be scaled by $r\le\srone$ to prevent control-flow attacks:
+For the conditional, we check the types of the condition and both branches. The usage contexts of the branches is joined to ensure we account for the worst-case usage of either execution path. The rule doesn't explicitly requires the grade of the condition must be $\le\srone$. Instead, we simply combine the usage by semiring addition and postpone the check to a lower level in the typing derivation.
 
 \begin{prooftree}
     \def\defaultHypSeparation{\hskip .0in}
@@ -793,6 +793,8 @@ We implemented \textsc{FlowSTLC} as a small interpreter pipeline in Java 17, wit
 The core static semantics is implemented in \texttt{BidirectionalTypeChecker} using two mutually recursive judgments: a synthesis mode and a checking model. Besides the rules specified in appendix, we also added a few rules to make the language more practical. For example, type checking rules for arithmetic/logical/comparison/(in)equality operators, intrinsic function calls, and sequencing constructs. Type errors are surfaced as \texttt{TypeError} exceptions with human-readable diagnostics.
 
 The dynamic semantics is realized by a straightforward environment-based interpreter (\texttt{EvalVisitor} + \texttt{Interpreter}) over the AST. Top-level constants evaluate to values and functions evaluate to closures capturing their lexical environment; calls extend the closure environment with evaluated arguments, giving standard call-by-value, lexically scoped execution. Importantly, security labels are enforced statically and erased dynamically: ModalityExpr evaluates as a runtime no-op (it simply evaluates its inner expression), matching the intended "filtered label" interpretation where confidentiality is a static property of programs rather than a runtime tag. Intrinsics implement basic I/O at the value level. Finally, we provide an LSP server (LSP4J) to support interactive development: it reparses documents and reruns the typechecker on edits to publish diagnostics, and implements hover and semantic tokens. Build and packaging are automated via Maven, producing shaded runnable jars for both the CLI compiler driver and the LSP entry point.
+
+The project implementation can be found at the GitHub repository \href{https://github.com/nofe1248/cs315-term-project}{nofe1248/cs315-term-project}.
 
 \section{Examples}
 
