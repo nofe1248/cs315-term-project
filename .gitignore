@@ -68,3 +68,6 @@ flowstlc-compiler/build/
 ### VS Code ###
 .vscode/
 .idea/
+
+vscode-flowstlc-lsp/node_modules/
+vscode-flowstlc-lsp/.vscode/

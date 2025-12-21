@@ -1,0 +1,61 @@
+{
+  "name": "vscode-flowstlc-lsp",
+  "displayName": "FlowSTLC Language Support (LSP)",
+  "description": "VS Code client for the FlowSTLC language server.",
+  "version": "0.0.1",
+  "publisher": "flowstlc",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:flowstlc"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "flowstlc",
+        "aliases": [
+          "FlowSTLC",
+          "flowstlc"
+        ],
+        "extensions": [
+          ".flowstlc"
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "FlowSTLC",
+      "properties": {
+        "flowstlc.lspJarPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional explicit path to flowstlc-compiler-*-lsp.jar. If empty, the extension will try to locate it under the workspace's flowstlc-compiler/target directory."
+        },
+        "flowstlc.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "Java executable to launch the FlowSTLC language server (default: java from PATH)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "package": "vsce package",
+    "lint": "echo \"No lint configured\""
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.5.4"
+  }
+}
+

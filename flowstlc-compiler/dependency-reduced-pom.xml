@@ -58,6 +58,17 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.5.1</version>
+        <executions>
+          <execution>
+            <id>run-lsp</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>net.flowstlc.compiler.lsp.LspMain</mainClass>
+            </configuration>
+          </execution>
+        </executions>
         <configuration>
           <mainClass>net.flowstlc.compiler.Main</mainClass>
         </configuration>
@@ -67,14 +78,50 @@
         <version>3.4.1</version>
         <executions>
           <execution>
+            <id>shade-cli</id>
             <phase>package</phase>
             <goals>
               <goal>shade</goal>
             </goals>
             <configuration>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <transformers>
                 <transformer>
                   <mainClass>net.flowstlc.compiler.Main</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+          <execution>
+            <id>shade-lsp</id>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <shadedClassifierName>lsp</shadedClassifierName>
+              <transformers>
+                <transformer>
+                  <mainClass>net.flowstlc.compiler.lsp.LspMain</mainClass>
                 </transformer>
               </transformers>
             </configuration>
@@ -112,5 +159,6 @@
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <antlr.version>4.13.2</antlr.version>
+    <lsp4j.version>0.24.0</lsp4j.version>
   </properties>
 </project>
