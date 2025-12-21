@@ -1,7 +1,7 @@
 val secret : Int [Sec] = [42]
 
-fun hash : Int [Sec]^Pub -> Int [Sec]
-fun hash n = let [x] = n in [x * x * x]
+fun hash : Int [Sec]^Pub -> Int
+fun hash n = let [x] = n in x * x * x
 
 fun main : Unit^Pub -> Int [Sec]
 fun main = hash secret

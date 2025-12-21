@@ -11,6 +11,7 @@
 \usepackage{bussproofs}
 \usepackage{stmaryrd}
 \usepackage{float}
+\usepackage{listings}
 \usepackage[colorlinks]{hyperref}
 \EnableBpAbbreviations
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
@@ -47,6 +48,20 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
 \newtheorem{proposition}{Proposition}
+
+\lstdefinestyle{mystyle}{  
+    breakatwhitespace=false,     
+    basicstyle=\ttfamily\small,    
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,
+    morekeywords={fun,val,Int,Bool,Unit,unit,String,printInt,printBool,printString,
+    if,let,in,then,else,Pub,Sec,readInt,readBool,readString,printf,println,format}
+}
+
 \begin{document}
 
 \title{\textsc{FlowSTLC}: An Information Flow Control Type System Based On Graded Modality
@@ -97,7 +112,7 @@ Then such coeffect systems might allow the function to be typed as
 \end{equation}
 where the first parameter is marked as a high-security input, and the second parameter is marked as a low-security input. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
 
-However, existing IFC type systems can be rather inflexible or coarse-grained. Many system treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\public\sqsubseteq\secret\}$, where $\public$ represents low-security information, and $\secret$ represents high-security information. This system will allow us precisely control how the values interact as a type of \emph{coeffects} \cite{petricek2013coeffects} \cite{petricek2014coeffects}, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
+However, existing IFC type systems can be rather inflexible or coarse-grained. Many systems treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\public\sqsubseteq\secret\}$, where $\public$ represents low-security information, and $\secret$ represents high-security information. This system will allow us precisely control how the values interact as a type of \emph{coeffects} \cite{petricek2013coeffects} \cite{petricek2014coeffects}, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
 
 \section{\textsc{FlowSTLC}: The Core Calculus}
 \subsection{Syntax}
@@ -121,7 +136,7 @@ The syntax of \textsc{FlowSTLC} is a direct extension of STLC with two additiona
 	\caption{Syntax of \textsc{FlowSTLC}}
 \end{figure}
 
-The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The function type $T\to^\ell T$ records how will the function use its argument by a grade $\ell$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\public\sqsubseteq\secret$. The records, projectinos, built-in booleans, natural numbers, and unit types are standard extensions established in prior literature, and we will omit the explanation of these constructs here.
+The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The function type $T\to^\ell T$ records how will the function use its argument by a grade $\ell$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\public\sqsubseteq\secret$. The records, projectinos, built-in booleans, natural numbers, and unit types are standard extensions established in prior literature, thus the explanation of these constructs is omitted.
 
 Typing judgements are of the regular form $\Gamma\vdash t:T$ with the typing contexts of the form:
 $$
@@ -473,7 +488,7 @@ The utility of this approach stems from the algebraic structure of the security 
 	\item \textbf{Context Scalar Multiplication} uses the meet operation ($\sqcup$). to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
 \end{itemize}
 
-In essence, the graded modality $\gradedt{\ell}{T}$ serves as a security-aware container. The type system's rules ensure that the "capability" $\ell$ needed to open this container is always respected, thereby statically guaranteeing that high-sensitivity data cannot flow into low-sensitivity outputs.
+Fundamentally, the graded modality $\gradedt{\ell}{T}$ serves as a security-aware container. The type system's rules ensure that the "capability" $\ell$ needed to open this container is always respected, thereby statically guaranteeing that high-sensitivity data cannot flow into low-sensitivity outputs.
 
 \subsection{A Simple Example}
 
@@ -482,7 +497,7 @@ $$
 \lam{x:\gradedt{\secret}{T}}{\textbf{let }[y]=x\textbf{ in }y}:\gradedt{\secret}{T}\to^\public T
 $$
 
-since it try to use a $\secret$ value to compute a $\public$ value. To type this term, we first need to show that
+as it attempts to use a $\secret$ value to compute a $\public$ value. To type this term, we first need to show that
 $$
 x:[\gradedt{\secret}{T}]_\public\vdash \textbf{let }[y]=x\textbf{ in }y:\gradedt{\secret}{T}\to^\public T
 $$
@@ -493,7 +508,7 @@ then according to the premises of \textsc{T-Let} rule, we need to show the follo
 	\item $y:[T]_\secret\vdash y:T$
 \end{enumerate}
 
-Property (1) is immediate, but there is no rule that allows the derivation of (2). The \textsc{T-Var} rule is inapplicable in this context because it requires that the used variable must have a $\public$ grade. So the term is ill-typed.
+Property (1) is immediate, but there is no rule that allows the derivation of (2). The \textsc{T-Var} rule is inapplicable in this context because it requires that the used variable must have a $\public$ grade. Consequently, the term is ill-typed.
 
 \section{Metatheory}
 \subsection{Type Safety}
@@ -644,7 +659,7 @@ While the previous sections defined the declarative typing rules, practical impl
     \end{split}
 \end{equation}
 
-Here we following a similar approach to Hodas \cite{hodas1994logic} and Polakow \cite{polakow2015embedding}. We split the context into two parts:
+Here, we follow a similar approach to Hodas \cite{hodas1994logic} and Polakow \cite{polakow2015embedding}. We split the context into two parts:
 
 \begin{itemize}
     \item Type context $\Phi$: maps variables to types, this is the input to the algorithm.
@@ -765,19 +780,95 @@ So the final result is
 \end{equation}
 and the typing succeeds.
 
-\section{Implementation and Examples}
+\section{Implementation}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{./flowstlc_interpreter_pipeline.png}
+    \caption{\textsc{FlowSTLC} Implementation Pipeline}
+\end{figure}
+
+We implemented \textsc{FlowSTLC} as a small interpreter pipeline in Java 17, with syntax defined using ANTLR4\cite{parr2013definitive} and semantics enforced by a typechecker base on the bidirectional typing system we developed in the previous section. The front-end is specified by \texttt{FlowSTLCLexer.g4} and \texttt{FlowSTLCParser.g4}, which define a Haskell-like conventional expression language (literals, variables, let/if, sequencing, records, arithmetic/boolean operators) plus explicit security annotations ($\secret$/$\public$) and modalities. Types include built-in base types (booleans, integers, strings, and unit type), record types, modality types, and graded function types written \texttt{T1\textasciicircum r -> T2}. The parse tree produced by ANTLR is converted into a small, explicit AST using \texttt{ASTBuilder}, which maps each grammar alternative to a dedicated node (e.g., \texttt{LetExpr}, \texttt{IfExpr}, \texttt{FunctionCallExpr}, \texttt{ModalityExpr}, \texttt{RecordExpr}) and similarly builds the type nodes (\texttt{FunctionType}, \texttt{ModalityType}, \texttt{RecordType}, etc.). This separation lets later phases operate on stable, type-theory-aligned constructs rather than parser artifacts.
+
+The core static semantics is implemented in \texttt{BidirectionalTypeChecker} using two mutually recursive judgments: a synthesis mode and a checking model. Besides the rules specified in appendix, we also added a few rules to make the language more practical. For example, type checking rules for arithmetic/logical/comparison/(in)equality operators, intrinsic function calls, and sequencing constructs. Type errors are surfaced as \texttt{TypeError} exceptions with human-readable diagnostics.
+
+The dynamic semantics is realized by a straightforward environment-based interpreter (\texttt{EvalVisitor} + \texttt{Interpreter}) over the AST. Top-level constants evaluate to values and functions evaluate to closures capturing their lexical environment; calls extend the closure environment with evaluated arguments, giving standard call-by-value, lexically scoped execution. Importantly, security labels are enforced statically and erased dynamically: ModalityExpr evaluates as a runtime no-op (it simply evaluates its inner expression), matching the intended "filtered label" interpretation where confidentiality is a static property of programs rather than a runtime tag. Intrinsics implement basic I/O at the value level. Finally, we provide an LSP server (LSP4J) to support interactive development: it reparses documents and reruns the typechecker on edits to publish diagnostics, and implements hover and semantic tokens. Build and packaging are automated via Maven, producing shaded runnable jars for both the CLI compiler driver and the LSP entry point.
+
+\section{Examples}
+
+This section illustrates the practical application of \textsc{FlowSTLC} through concrete examples of information flow checking.
+
+The first example, adapted from the work on Granule \cite{orchard2019quantitative}, demonstrates the handling of high-security data types.
+
+\begin{lstlisting}[style=mystyle]
+val secret : Int [Sec] = [42]
+
+fun hash : Int [Sec]^Pub -> Int [Sec]
+fun hash n = let [x] = n in [x * x * x]
+
+fun main : Unit^Pub -> Int [Sec]
+fun main = hash secret
+\end{lstlisting}
+
+In this listing, the variable \texttt{secret} is defined as a modality with a secret grade. Consequently, the type system restricts operations on this variable to secret-guarded modalities, such as the \texttt{hash} function.
+
+Attempts to modify the signature of the hash function to downgrade the security level results in type errors. For instance, changing the output grade to Pub or removing the modality entirely elicits the following diagnostic:
+
+\begin{lstlisting}[style=mystyle]
+// either
+fun hash : Int [Sec]^Pub -> Int [Pub]
+fun hash n = let [x] = n in [x * x * x]\\
+// or
+fun hash : Int [Sec]^Pub -> Int
+fun hash n = let [x] = n in x * x * x
+\end{lstlisting}
+
+\begin{lstlisting}[style=mystyle]
+Type checking failed: 
+  In let-binding: variable 'x' used at Pub 
+  which is not > declared modality grade Sec
+\end{lstlisting}
+
+The type checker rejects these programs because they facilitate the flow of secret values into the public domain, which violates the noninterference property.
+
+The second example demonstrates the prevention of control-flow attacks (implicit flows). Consider the following function definitions:
+
+\begin{lstlisting}[style=mystyle]
+fun not_leak : Bool^Pub -> Bool
+fun not_leak a = if a then false else true
+
+fun cfa : Bool^Sec -> Bool
+fun cfa a = if a then false else true
+\end{lstlisting}
+
+The function \texttt{not\_leak} is well-typed because the conditional expression depends on a public input. Conversely, the function \texttt{cfa} (Control-Flow Attack) attempts to utilize a secret boolean value within the condition. The type checker detects this violation and rejects the code:
+
+\begin{lstlisting}[style=mystyle]
+Type checking failed:
+  In cfa: parameter 'a' used at Pub 
+  which is not > declared input grade Sec
+\end{lstlisting}
+
+To resolve this typing error, the result must be encapsulated within a modality:
+
+\begin{lstlisting}[style=mystyle]
+fun not_longer_cfa : Bool^Sec -> Bool [Sec]
+fun not_longer_cfa a = [(if a then false else true)]
+\end{lstlisting}
+
+Since a secret-graded modality cannot be eliminated in a public context, this revised program conforms to the noninterference property and is accepted by the type system.
 
 \section{Related Work}
 
 Language-based IFC has a rich literature. Sabelfeld and Myers \cite{sabelfeld2003language} survey a variety of security type systems that enforce noninterference via typing. Seminal work by Volpano et al. \cite{volpano1996sound} introduced a static type system for a simple imperative language, ensuring well-typed programs satisfy noninterference. Extensions include JFlow \cite{myers1999jflow} and JIF \cite{pullicino2014jif} for Java, which associate security labels with Java types to track flows, and FlowCaml \cite{simonet2003flow} for OCaml, which similarly adds a security type-checker. Generally, these systems label each variable as high or low and enforce rules so that no operation can use a high value in a low context.
 
-More recently, graded type theories have been proposed to generalize such analyses. Graded type systems annotate types with additional information ("grades") to capture various properties of programs. For example, the Granule language \cite{orchard2019quantitative} uses graded modalities to track the effects and coeffects of program. In information flow use-cases, types are graded by a security lattice, allowing automatic enforcement of noninterference. Moon et al. introduce the Graded Modal Dependent Type Theory (\textsc{GrTT}) \cite{moon2021graded}, which extends dependent type system with graded modality and show that the grades can be effective at reasoning of programs. This work demonstrates that graded modality can capture fine-grained flow policies in types. Similarly, Marshall and Orchard \citen{marshall2023graded} demonstrated a graded-modal framework that can enforce confidentiality and even integrity simultaneously.
+More recently, graded type theories have been proposed to generalize such analyses. Graded type systems annotate types with additional information ("grades") to capture various properties of programs. For example, the Granule language \cite{orchard2019quantitative} uses graded modalities to track the effects and coeffects of program. In information flow use-cases, types are graded by a security lattice, allowing automatic enforcement of noninterference. Moon et al. introduce the Graded Modal Dependent Type Theory (\textsc{GrTT}) \cite{moon2021graded}, which extends dependent type system with graded modality and show that the grades can be effective at reasoning of programs. This work demonstrates that graded modality can capture fine-grained flow policies in types. Similarly, Marshall and Orchard \cite{marshall2023graded} demonstrated a graded-modal framework that can enforce confidentiality and even integrity simultaneously.
 
 Other approaches include dynamic IFC (e.g. LIO monad in Haskell \cite{stefan2011flexible}) or hybrid systems, but our focus is purely static. In summary, while classical security type sytems (JIF, FlowCaml, etc.) enforce noninterference via fixed lattice-labels. Our project draws on these ideas: we adapt graded modalities to a simple functional language to track information flows more flexibly.
 
 \section{Further Work and Conclusion}
 
-In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the  security semiring $\secure$, our system statically tracks data labels at the type level. And with typing rules that enforcing the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
+In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the security semiring $\secure$, our system statically tracks data labels at the type level. By utilizing typing rules that enforce the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
 
 While the results are promising, \textsc{FlowSTLC} in its current form is an \emph{idealized model} with clear limitations. For one, the core calculus is deliberately small and omits many practical language features. It has only base types and functions (no records, no algebraic data types, no recursive types, etc.), and it does not include polymorphism or dependent typing. As observed in prior work, static IFC models with minimal features have historically been considered "too limited or too restrictive to be used in practice" \cite{myers1999jflow}. Thus, our model inherits this limitation of expressiveness. Second, \textsc{FlowSTLC} exists only as a theoretical calculus and has not been integrated into a production-ready programming language. We consider that bridging this gap is a non-trivial challenge. For example, a recent survey noted that even in a rich language like Rust, implementing a sound IFC system requires "building an ad-hoc effect tracking system using bleeding-edge features of the Rust compiler". Finally, we have not evaluated performance or conducted real-world case studies. There are no benchmarks on typing or runtime costs, nor have we applied \text{FlowSTLC} to any non-trivial programs. In contrast, systems like JFlow and Cocoon \cite{lamba2024cocoon} have shown that static IFC checking can incur negligible overhead. Without such evaluation, the practical impact of \textsc{FlowSTLC} remains speculative.
 
