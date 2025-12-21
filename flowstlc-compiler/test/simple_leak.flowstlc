@@ -7,6 +7,9 @@ fun secure_identity n = n
 fun not_a_leak : Int [Sec]^Pub -> Int [Pub]
 fun not_a_leak n = [0]
 
+fun repackaging : Int [Sec]^Pub -> Int [Sec]
+fun repackaging n = let [x] = n in [x]
+
 fun leaky : Int^Sec -> Int
 fun leaky n = n
 

@@ -17,7 +17,7 @@ public final class SecurityOps {
     }
 
     public static SecurityLevel times(SecurityLevel a, SecurityLevel b) {
-        if (a == SecurityLevel.PUBLIC || b == SecurityLevel.PUBLIC) return SecurityLevel.PUBLIC;
+        if (a == SecurityLevel.PUBLIC && b == SecurityLevel.PUBLIC) return SecurityLevel.PUBLIC;
         return SecurityLevel.SECRET;
     }
 

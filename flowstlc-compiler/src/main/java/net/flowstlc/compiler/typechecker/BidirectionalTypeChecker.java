@@ -124,7 +124,7 @@ public final class BidirectionalTypeChecker {
             UsageContext elseUsage = check(env, ifExpr.getElseBranch(), expected);
 
             // Combine usages from condition, then-branch, and else-branch
-            return condUsage.contextJoin(thenUsage).contextJoin(elseUsage);
+            return condUsage.contextAdd(thenUsage).contextAdd(elseUsage);
         }
 
         // BD-Switch: If we can synthesize a type for t, we can check it against the same type.
@@ -623,6 +623,9 @@ public final class BidirectionalTypeChecker {
         }
         if (ty instanceof UnannotatedFunctionType uft) {
             return "(" + prettyType(uft.getFrom()) + " -> " + prettyType(uft.getTo()) + ")";
+        }
+        if (ty instanceof ModalityType mt) {
+            return prettyType(mt.getInner()) + " [" + prettyLevel(mt.getLevel()) + "]";
         }
         return ty.getClass().getSimpleName();
     }
