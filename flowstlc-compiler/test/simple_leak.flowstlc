@@ -1,0 +1,11 @@
+fun secure_fun : Int^Sec -> Int
+fun secure_fun n = 42
+
+fun secure_identity : Int [Sec]^Pub -> Int [Sec]
+fun secure_identity n = n
+
+fun leaky : Int^Sec -> Int
+fun leaky n = n
+
+fun main : Unit^Pub -> Int
+fun main = 0

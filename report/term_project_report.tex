@@ -669,7 +669,7 @@ The variable rule generates a usage of $\srone$ for the variable used and $\srze
 \begin{prooftree}
     \AXC{$\Phi(x)=T$}
     \RightLabel{\textsc{BD-Var}}
-    \UIC{$\Phi\vdash x\checking T\dashv\{x:\srone\}$}
+    \UIC{$\Phi\vdash x\synthesis T\dashv\{x:\srone\}$}
 \end{prooftree}
 
 The system transitions from synthesis to checking:
@@ -685,7 +685,7 @@ For function abstractions, we check the function body against its return type. T
 
 \begin{prooftree}
     \AXC{$\Phi,x:T_1\vdash t\checking T_2$}
-    \AXC{$\Delta(x)\le r$}
+    \AXC{$r\le\Delta(x)$}
     \RightLabel{\textsc{BD-Abs}}
     \BIC{$\Phi\vdash\lam{x:T_1}{t}\checking T_1\to^r T_2\dashv\Delta\setminus\{x\}$}
 \end{prooftree}
@@ -713,7 +713,7 @@ Modality elimination synthesizes the modality type $\gradedt{r}{T}$ and then che
     \def\defaultHypSeparation{\hskip .0in}
     \AXC{$\Phi\vdash t_1\synthesis\gradedt{r}{T}\dashv\Delta_1$}
     \AXC{$\Phi,x:T\vdash t_2\checking T_2\dashv\Delta_2$}
-    \AXC{$\Delta_2(x)\le r$}
+    \AXC{$r\le\Delta_2(x)$}
     \TIC{$\Phi\vdash\unp{x}{t_1}{t_2}\checking T_2\dashv\Delta_1+(\Delta_2\setminus\{x\})$}
 \end{prooftree}
 
@@ -1145,12 +1145,12 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \begin{prooftree}
     \AXC{$\Phi(x)=T$}
     \RightLabel{\textsc{BD-Var}}
-    \UIC{$\Phi\vdash x\checking T\dashv\{x:\srone\}$}
+    \UIC{$\Phi\vdash x\synthesis T\dashv\{x:\srone\}$}
 \end{prooftree}
 
 \begin{prooftree}
     \AXC{$\Phi,x:T_1\vdash t\checking T_2$}
-    \AXC{$\Delta(x)\le r$}
+    \AXC{$r\le\Delta(x)$}
     \RightLabel{\textsc{BD-Abs}}
     \BIC{$\Phi\vdash\lam{x:T_1}{t}\checking T_1\to^r T_2\dashv\Delta\setminus\{x\}$}
 \end{prooftree}
@@ -1172,7 +1172,7 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
     \def\defaultHypSeparation{\hskip .0in}
     \AXC{$\Phi\vdash t_1\synthesis\gradedt{r}{T}\dashv\Delta_1$}
     \AXC{$\Phi,x:T\vdash t_2\checking T_2\dashv\Delta_2$}
-    \AXC{$\Delta_2(x)\le r$}
+    \AXC{$r\le\Delta_2(x)$}
     \TIC{$\Phi\vdash\unp{x}{t_1}{t_2}\checking T_2\dashv\Delta_1+(\Delta_2\setminus\{x\})$}
 \end{prooftree}
 \begin{center}

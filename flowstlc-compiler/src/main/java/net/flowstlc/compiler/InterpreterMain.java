@@ -5,7 +5,7 @@ import net.flowstlc.compiler.ast.ASTUnannotator;
 import net.flowstlc.compiler.interpreter.Interpreter;
 import net.flowstlc.compiler.interpreter.Value;
 
-import net.flowstlc.compiler.typechecker.TypeChecker;
+import net.flowstlc.compiler.typechecker.BidirectionalTypeChecker;
 import net.flowstlc.compiler.typechecker.TypeError;
 import org.antlr.v4.runtime.*;
 
@@ -44,7 +44,7 @@ public class InterpreterMain {
         // ---------- Optional type check on full AST ----------
         if (doTypeCheck) {
             try {
-                TypeChecker tc = new TypeChecker();
+                BidirectionalTypeChecker tc = new BidirectionalTypeChecker();
                 tc.checkProgram(fullProgram, entryPoint);
                 System.out.println("[TypeChecker] OK");
             } catch (TypeError e) {

@@ -6,7 +6,7 @@ import net.flowstlc.compiler.ast.ASTUnannotator;
 import net.flowstlc.compiler.ast.Program;
 import net.flowstlc.compiler.interpreter.Interpreter;
 import net.flowstlc.compiler.interpreter.Value;
-import net.flowstlc.compiler.typechecker.TypeChecker;
+import net.flowstlc.compiler.typechecker.BidirectionalTypeChecker;
 import net.flowstlc.compiler.typechecker.TypeError;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.helper.HelpScreenException;
@@ -80,8 +80,8 @@ public class Main {
 
             if (!ns.getBoolean("no_typecheck")) {
                 try {
-                    TypeChecker checker = new TypeChecker();
-                    checker.checkProgram(program, entryPoint);
+                    BidirectionalTypeChecker typeChecker = new BidirectionalTypeChecker();
+                    typeChecker.checkProgram(program, entryPoint);
                 } catch (TypeError t) {
                     System.err.println("Type checking failed: " + t.getMessage());
                     typecheckResult = false;

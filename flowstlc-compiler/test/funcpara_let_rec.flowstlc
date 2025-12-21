@@ -9,12 +9,12 @@ fun fact n =
 fun inc : Int^Pub -> Int
 fun inc x = x + 1
 
-fun applyTwice : Int^Pub -> Int^Pub -> Int
+fun applyTwice : (Int^Pub -> Int)^Pub -> Int^Pub -> Int
 fun applyTwice f x = f (f x)
 
+val a : Int = fact 5
+val b : Int = applyTwice inc (-ten)
+val c : Int = (if flag and b == 12 then a else 0) + b
+
 fun main : Unit^Pub -> Int
-fun main =
-    let [a] = (fact 5) in
-    (let [b] = (applyTwice inc (-ten)) in
-    (let [c] = (if flag and b == 12 then a else 0) in
-    c + b))
+fun main = c

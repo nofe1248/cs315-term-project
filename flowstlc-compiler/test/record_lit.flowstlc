@@ -1,0 +1,6 @@
+val test_record : {a:Bool, b:Int} [Pub] = [{a = false, b = 7}]
+
+fun main : Unit^Pub -> Int
+fun main =
+  let [r] = test_record in
+  (if r.a then r.b + 1 else r.b - 1)
