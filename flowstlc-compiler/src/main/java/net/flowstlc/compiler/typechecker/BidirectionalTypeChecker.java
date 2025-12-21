@@ -85,7 +85,7 @@ public final class BidirectionalTypeChecker {
             UsageContext bodyUsage = check(extendedEnv, bodyExpr, expected);
 
             // Ensure the usage of the bound variable in the body is within the allowed grade.
-            SecurityLevel usedLevel = bodyUsage.getUsageOrDefault(varName, SecurityOps.bottom());
+            SecurityLevel usedLevel = bodyUsage.getUsageOrDefault(varName, SecurityOps.top());
             if (!SecurityOps.leq(mt.getLevel(), usedLevel)) {
                 throw new TypeError("In let-binding: variable '" + varName + "' used at " + prettyLevel(usedLevel)
                         + " which is not > declared modality grade " + prettyLevel(mt.getLevel()));
