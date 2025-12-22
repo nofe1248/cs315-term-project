@@ -50,6 +50,7 @@
     "lint": "echo \"No lint configured\""
   },
   "dependencies": {
+    "vscode": "^1.1.37",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
@@ -58,4 +59,3 @@
     "typescript": "^5.5.4"
   }
 }
-
