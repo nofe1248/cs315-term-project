@@ -124,6 +124,7 @@ if secret_passwd == "1234"
 
 \begin{frame}{ASTBuilder: Implementation Details}
     \begin{itemize}
+        \item Location: \texttt{flowstlc-compiler/src/main/java/net/flowstlc/compiler/ASTBuilder.java}
         \item Purpose: Convert ANTLR parse trees into project AST nodes (\texttt{net.flowstlc.compiler.ast}).
         \item Design: Extends \texttt{FlowSTLCParserBaseVisitor<Object>} and implements \texttt{visitXxx} methods returning AST nodes.
         \item Key points:
@@ -134,8 +135,29 @@ if secret_passwd == "1234"
             \item Expressions: binary/unary ops, \texttt{If}, \texttt{Let}, record construction/access, function and intrinsic calls.
             \item Strings: supports Unicode escape \texttt{\textbackslash u\{HEX\}}; invalid escapes throw exceptions.
         \end{itemize}
-        \item Pipeline: Parser (ANTLR) $\to$ \texttt{ASTBuilder} $\to$ type checker / interpreter / language server.
+        \item Pipeline: Parser (ANTLR) → \texttt{ASTBuilder} → type checker / interpreter / LSP.
+        \item Notes: clear visitor structure; consider adding source location info to errors for better diagnostics.
     \end{itemize}
+\end{frame}
+
+\begin{frame}{Simplified AST Design}
+\begin{itemize}
+    \item We use a \textbf{simplified, unannotated AST} for interpretation, separated from type information.
+    \item The \texttt{ASTUnannotator} removes type annotations produced during parsing and type checking.
+    \item The resulting AST contains only \textbf{runtime-relevant constructs}, such as expressions, bindings, and control flow.
+    \item This design significantly reduces interpreter complexity.
+    \item The actual type verification steps are carried out on the complete AST.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Interpreter Key Points}
+\begin{itemize}
+    \item The interpreter evaluates the simplified AST using a \textbf{visitor-based} strategy.
+    \item Evaluation is performed under an explicit \textbf{environment} that maps identifiers to runtime values.
+    \item New environments are created to represent \textbf{lexical scopes} introduced by bindings and function calls.
+    \item Functions are evaluated as \textbf{closures}, capturing both the function body and its defining environment.
+    \item Function application follows a strict \textbf{call-by-value} evaluation order.
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Limitations \& Future Work}
