@@ -124,7 +124,6 @@ if secret_passwd == "1234"
 
 \begin{frame}{ASTBuilder: Implementation Details}
     \begin{itemize}
-        \item Location: \texttt{flowstlc-compiler/src/main/java/net/flowstlc/compiler/ASTBuilder.java}
         \item Purpose: Convert ANTLR parse trees into project AST nodes (\texttt{net.flowstlc.compiler.ast}).
         \item Design: Extends \texttt{FlowSTLCParserBaseVisitor<Object>} and implements \texttt{visitXxx} methods returning AST nodes.
         \item Key points:
@@ -136,7 +135,6 @@ if secret_passwd == "1234"
             \item Strings: supports Unicode escape \texttt{\textbackslash u\{HEX\}}; invalid escapes throw exceptions.
         \end{itemize}
         \item Pipeline: Parser (ANTLR) → \texttt{ASTBuilder} → type checker / interpreter / LSP.
-        \item Notes: clear visitor structure; consider adding source location info to errors for better diagnostics.
     \end{itemize}
 \end{frame}
 
