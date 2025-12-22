@@ -1,8 +1,8 @@
 fun not_leak : Bool^Pub -> Bool
 fun not_leak a = if a then false else true
 
-fun cfa : Bool^Sec -> Bool [Sec]
-fun cfa a = [(if a then false else true)]
+fun cfa : Bool^Sec -> Bool
+fun cfa a = if a then false else true
 
 fun main : Unit^Pub -> Int
 fun main = 0

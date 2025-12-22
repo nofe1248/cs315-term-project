@@ -118,6 +118,7 @@
                   </excludes>
                 </filter>
               </filters>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
               <shadedClassifierName>lsp</shadedClassifierName>
               <transformers>
                 <transformer>
