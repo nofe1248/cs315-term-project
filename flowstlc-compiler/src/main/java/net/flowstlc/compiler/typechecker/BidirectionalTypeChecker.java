@@ -17,7 +17,15 @@ public final class BidirectionalTypeChecker {
         }
     }
 
+    private String sourceText;
+
     public void checkProgram(Program program, String entryPoint) {
+        checkProgram(program, entryPoint, null);
+    }
+
+    public void checkProgram(Program program, String entryPoint, String sourceText) {
+        this.sourceText = sourceText;
+
         Objects.requireNonNull(program, "program");
         Objects.requireNonNull(entryPoint, "entryPoint");
 
@@ -34,7 +42,7 @@ public final class BidirectionalTypeChecker {
         // Entry point must exist and be a function.
         Type entryTy = env.lookupVar(entryPoint);
         if (entryTy == null) {
-            throw new TypeError("Unknown entry point: " + entryPoint);
+            throw new TypeError("Unknown entry point: " + entryPoint, program, sourceText);
         }
         requireFunctionType(entryTy, "Entry point '" + entryPoint + "' is not a function");
 
@@ -45,6 +53,10 @@ public final class BidirectionalTypeChecker {
                 checkFunctionDeclaration(env, fd);
             }
         }
+    }
+
+    private TypeError error(String message, ASTNode node) {
+        return new TypeError(message, node, sourceText);
     }
 
     private UsageContext check(TypeEnv env, Expr expr, Type expected) {
@@ -59,7 +71,7 @@ public final class BidirectionalTypeChecker {
                 UsageContext innerUsage = check(env, innerExpr, mt.getInner());
                 return innerUsage.contextScale(mt.getLevel());
             } else {
-                throw new TypeError("Expected modality type for expression, found: " + prettyType(expected));
+                throw error("Expected modality type for expression, found: " + prettyType(expected), expr);
             }
         }
 
@@ -78,7 +90,7 @@ public final class BidirectionalTypeChecker {
             UsageContext boundUsage = boundResult.usage;
 
             if (!(boundType instanceof ModalityType mt)) {
-                throw new TypeError("Let-bound expression must have a modality type, found: " + prettyType(boundType));
+                throw error("Let-bound expression must have a modality type, found: " + prettyType(boundType), boundExpr);
             }
 
             TypeEnv extendedEnv = env.extend(varName, mt.getInner());
@@ -87,8 +99,8 @@ public final class BidirectionalTypeChecker {
             // Ensure the usage of the bound variable in the body is within the allowed grade.
             SecurityLevel usedLevel = bodyUsage.getUsageOrDefault(varName, SecurityOps.top());
             if (!SecurityOps.leq(mt.getLevel(), usedLevel)) {
-                throw new TypeError("In let-binding: variable '" + varName + "' used at " + prettyLevel(usedLevel)
-                        + " which is not > declared modality grade " + prettyLevel(mt.getLevel()));
+                throw error("In let-binding: variable '" + varName + "' used at " + prettyLevel(usedLevel)
+                        + " which is not > declared modality grade " + prettyLevel(mt.getLevel()), letExpr);
             }
 
             // Combine usages: remove the bound variable from body usage and add bound usage.
@@ -105,14 +117,14 @@ public final class BidirectionalTypeChecker {
                 recExpr.getFields().forEach((name, fieldExpr) -> {
                     Type fieldExpectedType = recType.getFields().get(name);
                     if (fieldExpectedType == null) {
-                        throw new TypeError("Record field '" + name + "' not found in expected type");
+                        throw error("Record field '" + name + "' not found in expected type", fieldExpr);
                     }
                     UsageContext fieldUsage = check(env, fieldExpr, fieldExpectedType);
                     totalUsage[0] = totalUsage[0].contextAdd(fieldUsage);
                 });
                 return totalUsage[0];
             } else {
-                throw new TypeError("Expected record type for record expression, found: " + prettyType(expected));
+                throw error("Expected record type for record expression, found: " + prettyType(expected), recExpr);
             }
         }
 
@@ -141,7 +153,7 @@ public final class BidirectionalTypeChecker {
         if (expr instanceof IdentifierExpr id) {
             Type bindingTy = env.lookupVar(id.getName());
             if (bindingTy == null) {
-                throw new TypeError("Unbound variable: " + id.getName());
+                throw error("Unbound variable: " + id.getName(), id);
             }
 
             UsageContext u = new UsageContext();
@@ -163,7 +175,7 @@ public final class BidirectionalTypeChecker {
                     usage = usage.contextAdd(uArg);
                     funTy = ft.getTo();
                 } else {
-                    throw new TypeError("Attempted to apply non-function type: " + prettyType(funTy));
+                    throw error("Attempted to apply non-function type: " + prettyType(funTy), call);
                 }
             }
 
@@ -179,11 +191,11 @@ public final class BidirectionalTypeChecker {
             if (recTy instanceof RecordType rt) {
                 Type fieldTy = rt.getFields().get(proj.getFieldName());
                 if (fieldTy == null) {
-                    throw new TypeError("Field '" + proj.getFieldName() + "' not found in record type");
+                    throw error("Field '" + proj.getFieldName() + "' not found in record type", proj);
                 }
                 return new InferResult(fieldTy, usage);
             } else {
-                throw new TypeError("Attempted to project field from non-record type: " + prettyType(recTy));
+                throw error("Attempted to project field from non-record type: " + prettyType(recTy), proj);
             }
         }
 
@@ -230,6 +242,14 @@ public final class BidirectionalTypeChecker {
                 } catch (TypeError ignored) {
                     // fall through
                 }
+                try {
+                    Type mod = new ModalityType(builtin, SecurityOps.semiringZero());
+                    UsageContext u = check(env, argExpr, mod);
+                    usageRef[0] = usageRef[0].contextAdd(u);
+                    return;
+                } catch (TypeError ignored) {
+                    // fall through
+                }
                 Type mod = new ModalityType(builtin, SecurityOps.semiringOne());
                 UsageContext u = check(env, argExpr, mod);
                 usageRef[0] = usageRef[0].contextAdd(u);
@@ -238,21 +258,21 @@ public final class BidirectionalTypeChecker {
             switch (name) {
                 case "printInt" -> {
                     if (args.size() != 1) {
-                        throw new TypeError("printInt expects 1 argument, got " + args.size());
+                        throw error("printInt expects 1 argument, got " + args.size(), intrinsicCall);
                     }
                     checkBuiltinOrModality.accept(args.get(0), BuiltinKind.INT);
                     return new InferResult(new BuiltinType(BuiltinKind.UNIT), usageRef[0]);
                 }
                 case "printBool" -> {
                     if (args.size() != 1) {
-                        throw new TypeError("printBool expects 1 argument, got " + args.size());
+                        throw error("printBool expects 1 argument, got " + args.size(), intrinsicCall);
                     }
                     checkBuiltinOrModality.accept(args.get(0), BuiltinKind.BOOL);
                     return new InferResult(new BuiltinType(BuiltinKind.UNIT), usageRef[0]);
                 }
                 case "printString" -> {
                     if (args.size() != 1) {
-                        throw new TypeError("printString expects 1 argument, got " + args.size());
+                        throw error("printString expects 1 argument, got " + args.size(), intrinsicCall);
                     }
                     checkBuiltinOrModality.accept(args.get(0), BuiltinKind.STRING);
                     return new InferResult(new BuiltinType(BuiltinKind.UNIT), usageRef[0]);
@@ -260,19 +280,19 @@ public final class BidirectionalTypeChecker {
 
                 case "readInt" -> {
                     if (!args.isEmpty()) {
-                        throw new TypeError("readInt expects 0 arguments, got " + args.size());
+                        throw error("readInt expects 0 arguments, got " + args.size(), intrinsicCall);
                     }
                     return new InferResult(new BuiltinType(BuiltinKind.INT), usageRef[0]);
                 }
                 case "readBool" -> {
                     if (!args.isEmpty()) {
-                        throw new TypeError("readBool expects 0 arguments, got " + args.size());
+                        throw error("readBool expects 0 arguments, got " + args.size(), intrinsicCall);
                     }
                     return new InferResult(new BuiltinType(BuiltinKind.BOOL), usageRef[0]);
                 }
                 case "readString" -> {
                     if (!args.isEmpty()) {
-                        throw new TypeError("readString expects 0 arguments, got " + args.size());
+                        throw error("readString expects 0 arguments, got " + args.size(), intrinsicCall);
                     }
                     return new InferResult(new BuiltinType(BuiltinKind.STRING), usageRef[0]);
                 }
@@ -283,7 +303,7 @@ public final class BidirectionalTypeChecker {
                     //  - first argument is String (or [String])
                     //  - remaining arguments are Int/Bool/String/Unit (optionally modality-wrapped)
                     if (args.isEmpty()) {
-                        throw new TypeError("printf expects at least 1 argument");
+                        throw error("printf expects at least 1 argument", intrinsicCall);
                     }
                     checkBuiltinOrModality.accept(args.get(0), BuiltinKind.STRING);
                     for (int i = 1; i < args.size(); i++) {
@@ -307,16 +327,24 @@ public final class BidirectionalTypeChecker {
                             } catch (TypeError ignored) {
                                 // try next
                             }
+                            try {
+                                UsageContext u = check(env, a, new ModalityType(new BuiltinType(k), SecurityOps.semiringZero()));
+                                usageRef[0] = usageRef[0].contextAdd(u);
+                                ok = true;
+                                break;
+                            } catch (TypeError ignored) {
+                                // try next
+                            }
                         }
                         if (!ok) {
-                            throw new TypeError("printf format argument #" + i + " must be Int/Bool/String/Unit (optionally modality-wrapped)");
+                            throw error("printf format argument #" + i + " must be Int/Bool/String/Unit (optionally modality-wrapped)", a);
                         }
                     }
                     return new InferResult(new BuiltinType(BuiltinKind.UNIT), usageRef[0]);
                 }
                 case "format" -> {
                     if (args.isEmpty()) {
-                        throw new TypeError("format expects at least 1 argument");
+                        throw error("format expects at least 1 argument", intrinsicCall);
                     }
                     checkBuiltinOrModality.accept(args.get(0), BuiltinKind.STRING);
                     for (int i = 1; i < args.size(); i++) {
@@ -339,15 +367,23 @@ public final class BidirectionalTypeChecker {
                             } catch (TypeError ignored) {
                                 // try next
                             }
+                            try {
+                                UsageContext u = check(env, a, new ModalityType(new BuiltinType(k), SecurityOps.semiringZero()));
+                                usageRef[0] = usageRef[0].contextAdd(u);
+                                ok = true;
+                                break;
+                            } catch (TypeError ignored) {
+                                // try next
+                            }
                         }
                         if (!ok) {
-                            throw new TypeError("format format argument #" + i + " must be Int/Bool/String/Unit (optionally modality-wrapped)");
+                            throw error("format format argument #" + i + " must be Int/Bool/String/Unit (optionally modality-wrapped)", a);
                         }
                     }
                     return new InferResult(new BuiltinType(BuiltinKind.STRING), usageRef[0]);
                 }
 
-                default -> throw new TypeError("Unknown intrinsic: " + name);
+                default -> throw error("Unknown intrinsic: " + name, intrinsicCall);
             }
         }
 
@@ -395,7 +431,7 @@ public final class BidirectionalTypeChecker {
                     operandTy = intTy;
                     resultTy = boolTy;
                 }
-                default -> throw new TypeError("Unknown binary operator: " + op);
+                default -> throw error("Unknown binary operator: " + op, binaryExpr);
             }
 
             UsageContext uLeft = check(env, binaryExpr.getLeft(), operandTy);
@@ -410,7 +446,7 @@ public final class BidirectionalTypeChecker {
             return new InferResult(secondRes.type, firstRes.usage.contextAdd(secondRes.usage));
         }
 
-        throw new TypeError("No bidirectional synthesis rule implemented for expression: " + expr.getClass().getSimpleName());
+        throw error("No bidirectional synthesis rule implemented for expression: " + expr.getClass().getSimpleName(), expr);
     }
 
     private InferResult inferFunctionName(TypeEnv env, String functionName) {
@@ -450,14 +486,14 @@ public final class BidirectionalTypeChecker {
 
         if (!allowImplicitUnitParam) {
             if (syntacticArity > declaredArity) {
-                throw new TypeError("Cannot check function '" + fd.getName() + "': declared type has arity "
-                        + declaredArity + " but definition has " + syntacticArity + " parameter(s)");
+                throw error("Cannot check function '" + fd.getName() + "': declared type has arity "
+                        + declaredArity + " but definition has " + syntacticArity + " parameter(s)", fd);
             }
             if (syntacticArity == 0 && declaredArity > 0) {
-                throw new TypeError("Cannot check function '" + fd.getName() + "': declared type expects "
+                throw error("Cannot check function '" + fd.getName() + "': declared type expects "
                         + declaredArity + " argument(s) but definition has no parameters. "
                         + "If you intended a nullary function, use a non-function type; "
-                        + "if you intended a thunk, use Unit as the argument type.");
+                        + "if you intended a thunk, use Unit as the argument type.", fd);
             }
         }
 
@@ -488,8 +524,8 @@ public final class BidirectionalTypeChecker {
             SecurityLevel used = bodyUsage.getUsageOrDefault("$unit", SecurityOps.top());
             SecurityLevel allowed = dec.paramGrades.get(0);
             if (!SecurityOps.leq(allowed, used)) {
-                throw new TypeError("In " + fd.getName() + ": implicit Unit parameter used at " + prettyLevel(used)
-                        + " which is not > declared input grade " + prettyLevel(allowed));
+                throw error("In " + fd.getName() + ": implicit Unit parameter used at " + prettyLevel(used)
+                        + " which is not > declared input grade " + prettyLevel(allowed), fd);
             }
         } else {
             for (int i = 0; i < params.size(); i++) {
@@ -497,8 +533,8 @@ public final class BidirectionalTypeChecker {
                 SecurityLevel used = bodyUsage.getUsageOrDefault(x, SecurityOps.top());
                 SecurityLevel allowed = dec.paramGrades.get(i);
                 if (!SecurityOps.leq(allowed, used)) {
-                    throw new TypeError("In " + fd.getName() + ": parameter '" + x + "' used at " + prettyLevel(used)
-                            + " which is not > declared input grade " + prettyLevel(allowed));
+                    throw error("In " + fd.getName() + ": parameter '" + x + "' used at " + prettyLevel(used)
+                            + " which is not > declared input grade " + prettyLevel(allowed), fd);
                 }
             }
         }
@@ -577,9 +613,9 @@ public final class BidirectionalTypeChecker {
         return ty instanceof BuiltinType bt && bt.getKind() == BuiltinKind.UNIT;
     }
 
-    private static void requireTypeEquals(Type got, Type expected) {
+    private void requireTypeEquals(Type got, Type expected) {
         if (!typeEquals(got, expected)) {
-            throw new TypeError("Type mismatch: expected " + prettyType(expected) + ", got " + prettyType(got));
+            throw error("Type mismatch: expected " + prettyType(expected) + ", got " + prettyType(got), got);
         }
     }
 
@@ -629,6 +665,7 @@ public final class BidirectionalTypeChecker {
         }
         return ty.getClass().getSimpleName();
     }
+
 
     private static String prettyLevel(SecurityLevel lvl) {
         return lvl == SecurityLevel.SECRET ? "Sec" : "Pub";

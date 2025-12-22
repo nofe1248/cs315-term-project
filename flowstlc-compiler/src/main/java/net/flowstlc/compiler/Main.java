@@ -5,6 +5,7 @@ import static net.sourceforge.argparse4j.impl.Arguments.storeTrue;
 import net.flowstlc.compiler.ast.ASTUnannotator;
 import net.flowstlc.compiler.ast.Program;
 import net.flowstlc.compiler.interpreter.Interpreter;
+import net.flowstlc.compiler.interpreter.RuntimeError;
 import net.flowstlc.compiler.interpreter.Value;
 import net.flowstlc.compiler.typechecker.BidirectionalTypeChecker;
 import net.flowstlc.compiler.typechecker.TypeError;
@@ -56,6 +57,8 @@ public class Main {
         try {
             Namespace ns = argumentParser.parseArgs(args);
             CharStream input = CharStreams.fromFileName(ns.getString("source"));
+            String sourceText = input.toString();
+
             FlowSTLCLexer lexer = new FlowSTLCLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             FlowSTLCParser parser = new FlowSTLCParser(tokens);
@@ -81,9 +84,9 @@ public class Main {
             if (!ns.getBoolean("no_typecheck")) {
                 try {
                     BidirectionalTypeChecker typeChecker = new BidirectionalTypeChecker();
-                    typeChecker.checkProgram(program, entryPoint);
+                    typeChecker.checkProgram(program, entryPoint, sourceText);
                 } catch (TypeError t) {
-                    System.err.println("Type checking failed: " + t.getMessage());
+                    System.err.println("Type checking failed: " + t.formatWithSnippet());
                     typecheckResult = false;
                 }
             }
@@ -92,7 +95,7 @@ public class Main {
                 ASTUnannotator unannotator = new ASTUnannotator();
                 Program unannotated = unannotator.unannotate(program);
 
-                Interpreter interp = new Interpreter();
+                Interpreter interp = new Interpreter(sourceText);
                 interp.run(unannotated);
 
                 Value result = interp.callEntryPoint(entryPoint);
@@ -101,7 +104,9 @@ public class Main {
             }
 
         } catch (TypeError t) {
-            System.err.println("Type error: " + t.getMessage());
+            System.err.println("Type error: " + t.formatWithSnippet());
+        } catch (RuntimeError re) {
+            System.err.println("Runtime error: " + re.formatWithSnippet());
         } catch (HelpScreenException ignored) {
         } catch (Exception e) {
             System.err.println("Error while running flowstlc-compiler: " + e.getMessage());

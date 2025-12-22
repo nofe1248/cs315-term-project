@@ -1,9 +1,19 @@
 package net.flowstlc.compiler.ast;
 
 public final class UnitLiteralExpr implements LiteralExpr {
-    public static final UnitLiteralExpr INSTANCE = new UnitLiteralExpr();
+    private final SourceSpan span;
 
-    private UnitLiteralExpr() {
+    public UnitLiteralExpr(SourceSpan span) {
+        this.span = span == null ? SourceSpan.UNKNOWN : span;
+    }
+
+    public UnitLiteralExpr() {
+        this(SourceSpan.UNKNOWN);
+    }
+
+    @Override
+    public SourceSpan getSpan() {
+        return span;
     }
 
     @Override

@@ -3,10 +3,16 @@ package net.flowstlc.compiler.ast;
 import java.util.Map;
 
 public class RecordType implements Type {
+    private final SourceSpan span;
     private final Map<String, Type> fields;
 
-    public RecordType(Map<String, Type> fields) {
+    public RecordType(SourceSpan span, Map<String, Type> fields) {
+        this.span = span == null ? SourceSpan.UNKNOWN : span;
         this.fields = fields;
+    }
+
+    public RecordType(Map<String, Type> fields) {
+        this(SourceSpan.UNKNOWN, fields);
     }
 
     public Map<String, Type> getFields() {
@@ -19,6 +25,11 @@ public class RecordType implements Type {
 
     public Type getFieldType(String fieldName) {
         return fields.get(fieldName);
+    }
+
+    @Override
+    public SourceSpan getSpan() {
+        return span;
     }
 
     @Override

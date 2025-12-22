@@ -1,10 +1,13 @@
 package net.flowstlc.compiler;
 
 import net.flowstlc.compiler.ast.*;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -14,13 +17,43 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         return (Program) visitProgram(ctx);
     }
 
+    private static SourceSpan span(ParserRuleContext ctx) {
+        if (ctx == null) {
+            return SourceSpan.UNKNOWN;
+        }
+        Token start = ctx.getStart();
+        Token stop = ctx.getStop();
+        if (start == null || stop == null) {
+            return SourceSpan.UNKNOWN;
+        }
+        int startIdx = start.getStartIndex();
+        int stopIdx = stop.getStopIndex();
+        if (startIdx < 0 || stopIdx < startIdx) {
+            return SourceSpan.UNKNOWN;
+        }
+        return new SourceSpan(startIdx, stopIdx + 1);
+    }
+
+    private static SourceSpan span(TerminalNode node) {
+        if (node == null || node.getSymbol() == null) {
+            return SourceSpan.UNKNOWN;
+        }
+        Token t = node.getSymbol();
+        int startIdx = t.getStartIndex();
+        int stopIdx = t.getStopIndex();
+        if (startIdx < 0 || stopIdx < startIdx) {
+            return SourceSpan.UNKNOWN;
+        }
+        return new SourceSpan(startIdx, stopIdx + 1);
+    }
+
     @Override
     public Object visitProgram(FlowSTLCParser.ProgramContext ctx) {
         List<Declaration> declarations = new ArrayList<>();
         for (FlowSTLCParser.DeclarationContext declCtx : ctx.declarations().declaration()) {
             declarations.add((Declaration) visitDeclaration(declCtx));
         }
-        return new Program(declarations);
+        return new Program(span(ctx), declarations);
     }
 
     @Override
@@ -48,7 +81,7 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         String name = ctx.Identifier().getText();
         Type type = (Type) visit(ctx.type());
         Expr value = (Expr) visit(ctx.expr());
-        return new ConstantDeclaration(name, type, value);
+        return new ConstantDeclaration(span(ctx), name, type, value);
     }
 
     @Override
@@ -66,7 +99,7 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         Type type = (Type) visit(ctx.function_type_declaration().type());
         Expr body = (Expr) visit(ctx.function_body_declaration().expr());
 
-        return new FunctionDeclaration(name, parameters, type, body);
+        return new FunctionDeclaration(span(ctx), name, parameters, type, body);
     }
 
     @Override
@@ -106,7 +139,7 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         }
         SecurityLevel level = (SecurityLevel) visit(ctx.security_level());
         Type to = (Type) visit(ctx.function_type());
-        return new FunctionType(from, level, to);
+        return new FunctionType(span(ctx), from, level, to);
     }
 
     @Override
@@ -115,16 +148,20 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
             Map<String, Type> fields = ctx.record_type_field().stream()
                     .collect(Collectors.toMap(
                             fieldCtx -> fieldCtx.Identifier().getText(),
-                            fieldCtx -> (Type) visit(fieldCtx.type())
+                            fieldCtx -> (Type) visit(fieldCtx.type()),
+                            (a, b) -> {
+                                throw new IllegalArgumentException("Duplicate record field");
+                            },
+                            LinkedHashMap::new
                     ));
-            return new RecordType(fields);
+            return new RecordType(span(ctx), fields);
         }
         if (ctx.base_type() != null) {
             return visit(ctx.base_type());
         }
         Type inner = (Type) visit(ctx.modality_type());
         SecurityLevel level = (SecurityLevel) visit(ctx.security_level());
-        return new ModalityType(inner, level);
+        return new ModalityType(span(ctx), inner, level);
     }
 
     @Override
@@ -137,22 +174,22 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
 
     @Override
     public Object visitIntType(FlowSTLCParser.IntTypeContext ctx) {
-        return new BuiltinType(BuiltinKind.INT);
+        return new BuiltinType(span(ctx), BuiltinKind.INT);
     }
 
     @Override
     public Object visitUnitType(FlowSTLCParser.UnitTypeContext ctx) {
-        return new BuiltinType(BuiltinKind.UNIT);
+        return new BuiltinType(span(ctx), BuiltinKind.UNIT);
     }
 
     @Override
     public Object visitBoolType(FlowSTLCParser.BoolTypeContext ctx) {
-        return new BuiltinType(BuiltinKind.BOOL);
+        return new BuiltinType(span(ctx), BuiltinKind.BOOL);
     }
 
     @Override
     public Object visitStringType(FlowSTLCParser.StringTypeContext ctx) {
-        return new BuiltinType(BuiltinKind.STRING);
+        return new BuiltinType(span(ctx), BuiltinKind.STRING);
     }
 
     // ==================== 表达式转换 ====================
@@ -161,7 +198,7 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
     public Object visitSequenceExpression(FlowSTLCParser.SequenceExpressionContext ctx) {
         Expr first = (Expr) visit(ctx.expr(0));
         Expr second = (Expr) visit(ctx.expr(1));
-        return new SequenceExpr(first, second);
+        return new SequenceExpr(span(ctx), first, second);
     }
 
     @Override
@@ -169,7 +206,7 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         String name = ctx.Identifier().getText();
         Expr bound = (Expr) visit(ctx.simple_expression(0));
         Expr inExpr = (Expr) visit(ctx.simple_expression(1));
-        return new LetExpr(name, bound, inExpr);
+        return new LetExpr(span(ctx), name, bound, inExpr);
     }
 
     @Override
@@ -181,13 +218,16 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
                     .map(exprCtx -> (Expr) visit(exprCtx))
                     .collect(Collectors.toList());
         }
-        return new FunctionCallExpr(name, arguments);
+        return new FunctionCallExpr(span(ctx), name, arguments);
     }
 
-    private BinaryExpr createBinaryExpr(FlowSTLCParser.Simple_expressionContext leftCtx, FlowSTLCParser.Simple_expressionContext rightCtx, BinaryOp op) {
+    private BinaryExpr createBinaryExpr(ParserRuleContext wholeCtx,
+                                        FlowSTLCParser.Simple_expressionContext leftCtx,
+                                        FlowSTLCParser.Simple_expressionContext rightCtx,
+                                        BinaryOp op) {
         Expr lhs = (Expr) visit(leftCtx);
         Expr rhs = (Expr) visit(rightCtx);
-        return new BinaryExpr(lhs, op, rhs);
+        return new BinaryExpr(span(wholeCtx), lhs, op, rhs);
     }
 
     @Override
@@ -199,90 +239,90 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
                     .map(exprCtx -> (Expr) visit(exprCtx))
                     .collect(Collectors.toList());
         }
-        return new IntrinsicExpr(name, arguments);
+        return new IntrinsicExpr(span(ctx), name, arguments);
     }
 
     @Override
     public Object visitAddExpression(FlowSTLCParser.AddExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.ADD);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.ADD);
     }
 
     @Override
     public Object visitSubExpression(FlowSTLCParser.SubExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.SUB);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.SUB);
     }
 
     @Override
     public Object visitMulExpression(FlowSTLCParser.MulExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.MUL);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.MUL);
     }
 
     @Override
     public Object visitDivExpression(FlowSTLCParser.DivExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.DIV);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.DIV);
     }
 
     @Override
     public Object visitModExpression(FlowSTLCParser.ModExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.MOD);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.MOD);
     }
 
     @Override
     public Object visitAndExpression(FlowSTLCParser.AndExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.AND);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.AND);
     }
 
     @Override
     public Object visitOrExpression(FlowSTLCParser.OrExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.OR);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.OR);
     }
 
     @Override
     public Object visitEqualExpression(FlowSTLCParser.EqualExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.EQ);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.EQ);
     }
 
     @Override
     public Object visitNotEqualExpression(FlowSTLCParser.NotEqualExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.NEQ);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.NEQ);
     }
 
     @Override
     public Object visitLessThanExpression(FlowSTLCParser.LessThanExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.LT);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.LT);
     }
 
     @Override
     public Object visitLessThanOrEqualExpression(FlowSTLCParser.LessThanOrEqualExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.LTE);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.LTE);
     }
 
     @Override
     public Object visitGreaterThanExpression(FlowSTLCParser.GreaterThanExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.GT);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.GT);
     }
 
     @Override
     public Object visitGreaterThanOrEqualExpression(FlowSTLCParser.GreaterThanOrEqualExpressionContext ctx) {
-        return createBinaryExpr(ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.GTE);
+        return createBinaryExpr(ctx, ctx.simple_expression(0), ctx.simple_expression(1), BinaryOp.GTE);
     }
 
     @Override
     public Object visitNotExpression(FlowSTLCParser.NotExpressionContext ctx) {
         Expr expr = (Expr) visit(ctx.simple_expression());
-        return new UnaryExpr(UnaryOp.NOT, expr);
+        return new UnaryExpr(span(ctx), UnaryOp.NOT, expr);
     }
 
     @Override
     public Object visitNegateExpression(FlowSTLCParser.NegateExpressionContext ctx) {
         Expr expr = (Expr) visit(ctx.simple_expression());
-        return new UnaryExpr(UnaryOp.NEG, expr);
+        return new UnaryExpr(span(ctx), UnaryOp.NEG, expr);
     }
 
     @Override
     public Object visitModalityExpression(FlowSTLCParser.ModalityExpressionContext ctx) {
         Expr inner = (Expr) visit(ctx.simple_expression());
-        return new ModalityExpr(inner);
+        return new ModalityExpr(span(ctx), inner);
     }
 
     @Override
@@ -290,7 +330,7 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         Expr condition = (Expr) visit(ctx.simple_expression(0));
         Expr thenBranch = (Expr) visit(ctx.simple_expression(1));
         Expr elseBranch = (Expr) visit(ctx.simple_expression(2));
-        return new IfExpr(condition, thenBranch, elseBranch);
+        return new IfExpr(span(ctx), condition, thenBranch, elseBranch);
     }
 
     @Override
@@ -298,16 +338,20 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         Map<String, Expr> fields = ctx.record_expr_field().stream()
                 .collect(Collectors.toMap(
                         fieldCtx -> fieldCtx.Identifier().getText(),
-                        fieldCtx -> (Expr) visit(fieldCtx.simple_expression())
+                        fieldCtx -> (Expr) visit(fieldCtx.simple_expression()),
+                        (a, b) -> {
+                            throw new IllegalArgumentException("Duplicate record field");
+                        },
+                        LinkedHashMap::new
                 ));
-        return new RecordExpr(fields);
+        return new RecordExpr(span(ctx), fields);
     }
 
     @Override
     public Object visitRecordFieldAccessExpression(FlowSTLCParser.RecordFieldAccessExpressionContext ctx) {
         Expr recordExpr = (Expr) visit(ctx.simple_expression());
         String fieldName = ctx.Identifier().getText();
-        return new RecordFieldAccessExpr(recordExpr, fieldName);
+        return new RecordFieldAccessExpr(span(ctx), recordExpr, fieldName);
     }
 
     @Override
@@ -322,24 +366,24 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
 
     @Override
     public Object visitIdentifierExpression(FlowSTLCParser.IdentifierExpressionContext ctx) {
-        return new IdentifierExpr(ctx.Identifier().getText());
+        return new IdentifierExpr(span(ctx.Identifier()), ctx.Identifier().getText());
     }
 
     @Override
     public Object visitIntLiteral(FlowSTLCParser.IntLiteralContext ctx) {
         BigInteger value = new BigInteger(ctx.IntegerLiteral().getText());
-        return new IntLiteralExpr(value);
+        return new IntLiteralExpr(span(ctx.IntegerLiteral()), value);
     }
 
     @Override
     public Object visitBoolLiteral(FlowSTLCParser.BoolLiteralContext ctx) {
         boolean value = Boolean.parseBoolean(ctx.BooleanLiteral().getText());
-        return new BoolLiteralExpr(value);
+        return new BoolLiteralExpr(span(ctx.BooleanLiteral()), value);
     }
 
     @Override
     public Object visitUnitLiteral(FlowSTLCParser.UnitLiteralContext ctx) {
-        return UnitLiteralExpr.INSTANCE;
+        return new UnitLiteralExpr(span(ctx));
     }
 
     @Override
@@ -347,7 +391,7 @@ public final class ASTBuilder extends FlowSTLCParserBaseVisitor<Object> {
         String text = ctx.StringLiteral().getText();
         String raw = text.substring(1, text.length() - 1);
         String value = unescapeString(raw);
-        return new StringLiteralExpr(value);
+        return new StringLiteralExpr(span(ctx.StringLiteral()), value);
     }
 
     private String unescapeString(String s) {

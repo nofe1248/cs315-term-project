@@ -143,13 +143,13 @@ public final class FlowstlcTextDocumentService implements TextDocumentService {
             try {
                 Program program = parseToProgram(text);
                 if (program != null) {
-                    new BidirectionalTypeChecker().checkProgram(program, "main");
+                    new BidirectionalTypeChecker().checkProgram(program, "main", text);
                 }
             } catch (TypeError te) {
                 Diagnostic d = new Diagnostic();
                 d.setSeverity(DiagnosticSeverity.Error);
-                d.setMessage(te.getMessage());
-                d.setRange(new Range(new Position(0, 0), new Position(0, 1)));
+                d.setMessage(te.formatWithSnippet());
+                d.setRange(LspPositions.rangeFromSpan(text, te.getSpan()));
                 diagnostics.add(d);
             } catch (Exception e) {
                 Diagnostic d = new Diagnostic();

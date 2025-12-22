@@ -1,12 +1,18 @@
 package net.flowstlc.compiler.ast;
 
-public class ModalityType implements Type {
+public final class ModalityType implements Type {
+    private final SourceSpan span;
     private final Type inner;
     private final SecurityLevel level;
 
-    public ModalityType(Type inner, SecurityLevel level) {
+    public ModalityType(SourceSpan span, Type inner, SecurityLevel level) {
+        this.span = span == null ? SourceSpan.UNKNOWN : span;
         this.inner = inner;
         this.level = level;
+    }
+
+    public ModalityType(Type inner, SecurityLevel level) {
+        this(SourceSpan.UNKNOWN, inner, level);
     }
 
     public Type getInner() {
@@ -15,6 +21,11 @@ public class ModalityType implements Type {
 
     public SecurityLevel getLevel() {
         return level;
+    }
+
+    @Override
+    public SourceSpan getSpan() {
+        return span;
     }
 
     @Override

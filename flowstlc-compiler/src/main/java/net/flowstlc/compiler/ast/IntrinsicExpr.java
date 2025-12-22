@@ -2,13 +2,19 @@ package net.flowstlc.compiler.ast;
 
 import java.util.List;
 
-public class IntrinsicExpr implements Expr {
+public final class IntrinsicExpr implements Expr {
+    private final SourceSpan span;
     private final String intrinsicName;
     private final List<Expr> arguments;
 
-    public IntrinsicExpr(String intrinsicName, List<Expr> arguments) {
+    public IntrinsicExpr(SourceSpan span, String intrinsicName, List<Expr> arguments) {
+        this.span = span == null ? SourceSpan.UNKNOWN : span;
         this.intrinsicName = intrinsicName;
         this.arguments = arguments;
+    }
+
+    public IntrinsicExpr(String intrinsicName, List<Expr> arguments) {
+        this(SourceSpan.UNKNOWN, intrinsicName, arguments);
     }
 
     public String getIntrinsicName() {
@@ -19,8 +25,9 @@ public class IntrinsicExpr implements Expr {
         return arguments;
     }
 
-    public Expr getArgumentAt(int index) {
-        return arguments.get(index);
+    @Override
+    public SourceSpan getSpan() {
+        return span;
     }
 
     @Override

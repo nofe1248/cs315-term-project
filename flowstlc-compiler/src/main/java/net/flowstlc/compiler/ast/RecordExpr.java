@@ -2,23 +2,26 @@ package net.flowstlc.compiler.ast;
 
 import java.util.Map;
 
-public class RecordExpr implements Expr {
+public final class RecordExpr implements Expr {
+    private final SourceSpan span;
     private final Map<String, Expr> fields;
 
-    public RecordExpr(Map<String, Expr> fields) {
+    public RecordExpr(SourceSpan span, Map<String, Expr> fields) {
+        this.span = span == null ? SourceSpan.UNKNOWN : span;
         this.fields = fields;
+    }
+
+    public RecordExpr(Map<String, Expr> fields) {
+        this(SourceSpan.UNKNOWN, fields);
     }
 
     public Map<String, Expr> getFields() {
         return fields;
     }
 
-    public boolean hasField(String fieldName) {
-        return fields.containsKey(fieldName);
-    }
-
-    public Expr getFieldExpr(String fieldName) {
-        return fields.get(fieldName);
+    @Override
+    public SourceSpan getSpan() {
+        return span;
     }
 
     @Override

@@ -1,12 +1,14 @@
 package net.flowstlc.compiler.interpreter;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class RecordV implements Value {
     private final Map<String, Value> fields;
 
     public RecordV(Map<String, Value> fields) {
-        this.fields = fields;
+        this.fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
     }
 
     public boolean hasField(String name) {

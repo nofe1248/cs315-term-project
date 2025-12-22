@@ -1,0 +1,10 @@
+fun getAge : {id: Int [Sec], name: String [Sec], age: Int [Pub]}^Pub -> Int
+fun getAge patient_info = let [age] = patient_info.age in age
+
+fun getName : {id: Int [Sec], name: String [Sec], age: Int [Pub]}^Pub -> String [Sec]
+fun getName patient_info = let [name] = patient_info.name in [name]
+
+fun main : Unit^Pub -> Int
+fun main = 
+    @printf "Patient name: %s" (getName {id = [@readInt], name = [@readString], age = [@readInt]});
+    0

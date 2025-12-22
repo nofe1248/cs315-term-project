@@ -6,7 +6,15 @@ import java.util.List;
 
 public final class Interpreter {
     Env global = new Env();
-    EvalVisitor eval = new EvalVisitor(global);
+    EvalVisitor eval;
+
+    public Interpreter() {
+        this(null);
+    }
+
+    public Interpreter(String sourceText) {
+        this.eval = new EvalVisitor(global, sourceText);
+    }
 
     public Value run(Program program) {
         for (Declaration decl : program.getDeclarations()) {
@@ -15,6 +23,7 @@ public final class Interpreter {
 
         return UnitV.INSTANCE;
     }
+
     public Value callEntryPoint(String entryPointName) {
         Value v = global.get(entryPointName);
         if (!(v instanceof ClosureV clo)) {
@@ -42,6 +51,7 @@ public final class Interpreter {
             throw new RuntimeError("Entry point expects " + params.size() + " args, not supported");
         }
     }
+
     private Env evalEnv() {
         try {
             var f = EvalVisitor.class.getDeclaredField("env");

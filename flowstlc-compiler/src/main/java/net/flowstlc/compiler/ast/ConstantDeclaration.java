@@ -1,14 +1,20 @@
 package net.flowstlc.compiler.ast;
 
 public final class ConstantDeclaration implements Declaration {
+    private final SourceSpan span;
     private final String name;
     private final Type type;
     private final Expr value;
 
-    public ConstantDeclaration(String name, Type type, Expr value) {
+    public ConstantDeclaration(SourceSpan span, String name, Type type, Expr value) {
+        this.span = span == null ? SourceSpan.UNKNOWN : span;
         this.name = name;
         this.type = type;
         this.value = value;
+    }
+
+    public ConstantDeclaration(String name, Type type, Expr value) {
+        this(SourceSpan.UNKNOWN, name, type, value);
     }
 
     public String getName() {
@@ -21,6 +27,11 @@ public final class ConstantDeclaration implements Declaration {
 
     public Expr getValue() {
         return value;
+    }
+
+    @Override
+    public SourceSpan getSpan() {
+        return span;
     }
 
     @Override

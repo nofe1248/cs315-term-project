@@ -1,6 +1,8 @@
 package net.flowstlc.compiler.lsp;
 
+import net.flowstlc.compiler.ast.SourceSpan;
 import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
 
 public final class LspPositions {
     private LspPositions() {}
@@ -26,6 +28,37 @@ public final class LspPositions {
 
         int clampedChar = Math.min(targetChar, lineEnd - lineStart);
         return lineStart + clampedChar;
+    }
+
+    public static Position positionAt(String text, int offset) {
+        int off = Math.max(0, Math.min(offset, text.length()));
+
+        int line = 0;
+        int lineStart = 0;
+        for (int i = 0; i < off; i++) {
+            if (text.charAt(i) == '\n') {
+                line++;
+                lineStart = i + 1;
+            }
+        }
+        int ch = off - lineStart;
+        return new Position(line, ch);
+    }
+
+    public static Range rangeFromSpan(String text, SourceSpan span) {
+        if (text == null || span == null || !span.isKnown()) {
+            return new Range(new Position(0, 0), new Position(0, 1));
+        }
+        int start = Math.max(0, Math.min(span.getStartOffset(), text.length()));
+        int end = Math.max(start, Math.min(span.getEndOffset(), text.length()));
+        Position startPos = positionAt(text, start);
+        Position endPos = positionAt(text, end);
+        // LSP shouldn't have empty ranges for diagnostics; ensure at least 1 char.
+        if (start == end) {
+            int bumped = Math.min(text.length(), start + 1);
+            endPos = positionAt(text, bumped);
+        }
+        return new Range(startPos, endPos);
     }
 
     public static String identifierAt(String text, int offset) {
