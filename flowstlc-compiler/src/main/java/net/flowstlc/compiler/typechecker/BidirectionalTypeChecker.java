@@ -90,7 +90,8 @@ public final class BidirectionalTypeChecker {
             UsageContext boundUsage = boundResult.usage;
 
             if (!(boundType instanceof ModalityType mt)) {
-                throw error("Let-bound expression must have a modality type, found: " + prettyType(boundType), boundExpr);
+                throw error("Let-bound expression must have a modality type, found: "
+                        + prettyType(boundType), boundExpr);
             }
 
             TypeEnv extendedEnv = env.extend(varName, mt.getInner());
@@ -141,7 +142,7 @@ public final class BidirectionalTypeChecker {
 
         // BD-Switch: If we can synthesize a type for t, we can check it against the same type.
         InferResult got = infer(env, expr);
-        requireTypeEquals(got.type, expected);
+        requireTypeEquals(got.type, expected, expr);
         return got.usage;
     }
 
@@ -337,7 +338,8 @@ public final class BidirectionalTypeChecker {
                             }
                         }
                         if (!ok) {
-                            throw error("printf format argument #" + i + " must be Int/Bool/String/Unit (optionally modality-wrapped)", a);
+                            throw error("printf format argument #" + i
+                                    + " must be Int/Bool/String/Unit (optionally modality-wrapped)", a);
                         }
                     }
                     return new InferResult(new BuiltinType(BuiltinKind.UNIT), usageRef[0]);
@@ -377,7 +379,8 @@ public final class BidirectionalTypeChecker {
                             }
                         }
                         if (!ok) {
-                            throw error("format format argument #" + i + " must be Int/Bool/String/Unit (optionally modality-wrapped)", a);
+                            throw error("format format argument #" + i
+                                    + " must be Int/Bool/String/Unit (optionally modality-wrapped)", a);
                         }
                     }
                     return new InferResult(new BuiltinType(BuiltinKind.STRING), usageRef[0]);
@@ -475,9 +478,7 @@ public final class BidirectionalTypeChecker {
         //   fun main : Unit^Pub -> T
         //   fun main = body
         // i.e., a nullary definition for a unary Unit-argument function.
-        boolean allowImplicitUnitParam = syntacticArity == 0
-                && declaredArity == 1
-                && isUnitType(getNthFunctionInputType(declared, 0));
+        boolean allowImplicitUnitParam = syntacticArity == 0 && declaredArity == 1 && isUnitType(getNthFunctionInputType(declared, 0));
 
         int arityForChecking = syntacticArity;
         if (allowImplicitUnitParam) {
@@ -613,9 +614,10 @@ public final class BidirectionalTypeChecker {
         return ty instanceof BuiltinType bt && bt.getKind() == BuiltinKind.UNIT;
     }
 
-    private void requireTypeEquals(Type got, Type expected) {
+    private void requireTypeEquals(Type got, Type expected, ASTNode originated_expr) {
         if (!typeEquals(got, expected)) {
-            throw error("Type mismatch: expected " + prettyType(expected) + ", got " + prettyType(got), got);
+            throw error("Type mismatch: expected " + prettyType(expected) + ", got " + prettyType(got),
+                    originated_expr == null ? got : originated_expr);
         }
     }
 
@@ -635,9 +637,7 @@ public final class BidirectionalTypeChecker {
         }
 
         if (a instanceof FunctionType fa && b instanceof FunctionType fb) {
-            return typeEquals(fa.getFrom(), fb.getFrom())
-                    && fa.getLevel() == fb.getLevel()
-                    && typeEquals(fa.getTo(), fb.getTo());
+            return typeEquals(fa.getFrom(), fb.getFrom()) && fa.getLevel() == fb.getLevel() && typeEquals(fa.getTo(), fb.getTo());
         }
 
         if (a instanceof UnannotatedFunctionType ua && b instanceof UnannotatedFunctionType ub) {
