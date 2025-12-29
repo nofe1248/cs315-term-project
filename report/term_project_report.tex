@@ -89,7 +89,7 @@ Shenzhen, China \\
 \maketitle
 
 \begin{abstract}
-In this project, we introduce the design and implementation of a simple functional programming language with a type system that enforces secure information flow. Building on the simply-typed lambda calculus (STLC), we extend the type system with a graded modality with a security semiring. Inspired by \textit{Graded Modal Dependent Type Theory} \cite{moon2021graded}, our system statically prevents unauthorized flows of sensitive data into public outputs, ensuring the noninterference property \cite{smith2007principles}.
+In this project, we introduce the design and implementation of a simple functional programming language with a type system for secure information flow. Building on the simply-typed lambda calculus (STLC), we extend the type system with a graded modality over a security semiring. Inspired by \textit{Graded Modal Dependent Type Theory} \cite{moon2021graded}, our system is intended to prevent unauthorized flows of sensitive data into public outputs and to establish noninterference \cite{smith2007principles} for the core calculus.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -103,7 +103,7 @@ Modern software often handles sensitive data that must remain confidential. The 
 \emph{Type systems} \cite{sabelfeld2003language} \cite{abadi1999core} have been proved effective at enforcing noninterference: they associate each value with a \emph{security label} and constrain operations so that a well-typed program is guaranteed not to leak high-security information. For example, consider the following function:
 
 \begin{equation}
-	\text{foo}=\lam{x:\nat}{\lam{y:\nat}{x+y}}
+	\text{foo}=\lam{x:\nat}{\lam{y:\nat}{x}}
 \end{equation}
 
 Then such coeffect systems might allow the function to be typed as
@@ -112,7 +112,7 @@ Then such coeffect systems might allow the function to be typed as
 \end{equation}
 where the first parameter is marked as a high-security input, and the second parameter is marked as a low-security input. If a low-security result depends on a high-security input, the type system would reject the program. Thus, those security type systems can automatically verify that programs adhere to confidentiality policies.
 
-However, existing IFC type systems can be rather inflexible or coarse-grained. Many systems treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and often difficult to coexist with other sophisticated type system constructs. To address these issues, we propose the \textsc{FlowSTLC}, a more flexible and extensible type system that track informational flows with \emph{graded modalities}. More specifically, we will design a simply typed lambda-calculus with integrated \emph{graded necessity} for the semiring $\{\public\sqsubseteq\secret\}$, where $\public$ represents low-security information, and $\secret$ represents high-security information. This system will allow us precisely control how the values interact as a type of \emph{coeffects} \cite{petricek2013coeffects} \cite{petricek2014coeffects}, while remain easy to extend with other program reasoning constructs like the \emph{usage analysis} \cite{orchard2019quantitative}.
+However, existing IFC type systems can be rather inflexible or coarse-grained. Many systems treat security labels in a rigid, lattice-based way \cite{denning1976lattice}, and they can be difficult to combine with other sophisticated type-system constructs. To address these issues, we propose \textsc{FlowSTLC}, a more flexible and extensible type system that tracks informational flows with \emph{graded modalities}. More specifically, we design a simply typed lambda calculus with integrated \emph{graded necessity} for the semiring $\{\public\sqsubseteq\secret\}$, where $\public$ represents low-security information and $\secret$ represents high-security information. This system lets us control how values interact using \emph{coeffects} \cite{petricek2013coeffects} \cite{petricek2014coeffects}, while remaining easy to extend with other program-reasoning constructs such as \emph{usage analysis} \cite{orchard2019quantitative}.
 
 \section{\textsc{FlowSTLC}: The Core Calculus}
 \subsection{Syntax}
@@ -128,7 +128,7 @@ The syntax of \textsc{FlowSTLC} is a direct extension of STLC with two additiona
 		\textsf{Term}\;t\;&::=&\;x\;|\;t\; t\;|\;\lambda x.t\;|\;[t]\;|\;\textbf{let }[x]=t\textbf{ in }t\\
 		&&\{l_i=t_i^{i\in1..n}\}\;|\;t.l\\
 		&&\true\;|\;\false\;|\;\cond{t}{t}{t}\;|\; n\\
-		&&\iszero{t}\;|\;\unt\;|\;\une{t}{t}\\
+		&&\suc{t}\;|\;\prd{t}\;|\;\iszero{t}\;|\;\unt\;|\;\une{t}{t}\\
 		\textsf{Type}\;T\;&::=&\;T\to^\ell T\;|\;\square_r T\\
 		&&\{l_i:T_i^{i\in1..n}\}\;|\;\untt\;|\;\bool\;|\;\nat\\
 	\end{aligned}
@@ -136,7 +136,7 @@ The syntax of \textsc{FlowSTLC} is a direct extension of STLC with two additiona
 	\caption{Syntax of \textsc{FlowSTLC}}
 \end{figure}
 
-The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminate the modalities by checking whether $t_2$ uses $t_1$ w.r.t. its grade, and, if satisfied, "unbox" the modality and substitute it into $t_2$. The function type $T\to^\ell T$ records how will the function use its argument by a grade $\ell$. The graded modality $\gradedt{\ell}{T}$ is a type constructor where $\ell$ comes from the \emph{security level algebra}, i.e., a semiring $\secure=\public\sqsubseteq\secret$. The records, projectinos, built-in booleans, natural numbers, and unit types are standard extensions established in prior literature, thus the explanation of these constructs is omitted.
+The syntax $[t]$ promotes a term to a graded modality, and $\unp{x}{t_1}{t_2}$ eliminates the modality by checking whether $t_2$ uses the unboxed value at its grade and then substituting it into $t_2$. The function type $T\to^\ell T$ records how the function uses its argument. The graded modality $\gradedt{\ell}{T}$ is parameterized by a security grade $\ell$ from the semiring $\secure=\public\sqsubseteq\secret$. Records, projections, booleans, natural numbers, and unit are standard extensions.
 
 Typing judgements are of the regular form $\Gamma\vdash t:T$ with the typing contexts of the form:
 $$
@@ -171,7 +171,7 @@ Contexts are either empty $\emptyset$, or can be extended with  a \emph{graded a
 	\caption{STLC rules in \textsc{FlowSTLC}}
 \end{figure}
 
-The exchange rule and weakening rule that allow permutation and expansion of contexts is implicit here, instead we enables the permutation by a permutation lemma (see \hyperref[lem-perm]{Permutation lemma}). The differences with the standard rules are that these rules integrate grades into the premises and conclusions. For example, the \textsc{T-Var} rule enforces that we only use $x$ by requiring all other assumptions have a $\secret$ grade. And the abstraction rule \textsc{T-Abs} records the usage of variable $x$ in function body by marking the function's type with the same grade of the assumption that assigns $x$. For the application rule \textsc{T-App}, the concatenation combines all graded assumptions by the semiring addition $+$ (for more information see the \hyperref[def-concat]{Appendix A.3}).
+The exchange and weakening rules that permit context permutation and expansion are implicit here; permutation is recorded by a separate lemma (see \hyperref[lem-perm]{Permutation lemma}). The differences from standard STLC are that these rules integrate grades into their premises and conclusions. For example, \textsc{T-Var} enforces that all unused assumptions have grade $\secret$, while \textsc{T-Abs} records the usage grade of its bound variable in the arrow type. In \textsc{T-App}, context concatenation combines graded assumptions by semiring addition (see \hyperref[def-concat]{Appendix A.3}).
 
 The next three rules build the structure of the security label semiring:
 \begin{figure}[H]
@@ -198,16 +198,16 @@ The next three rules build the structure of the security label semiring:
 	\caption{Grade Rules in \textsc{FlowSTLC}}
 \end{figure}
 
-The \emph{promotion} rule \textsc{T-Pro} "promotes" a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix A.3}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is "unboxed" and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} allows us to relax the constraint if $\ell_2\sqsubseteq\ell_1$.
+The \emph{promotion} rule \textsc{T-Pro} \textquotedblleft promotes\textquotedblright a regular term $t$ to a graded modality by propagating its resource requirement to the context by a \emph{scalar multiplication} (for complete definition of scalar multiplication, see the \hyperref[def-mul]{Appendix A.3}). The \textsc{T-Let} rule provides a way to eliminate graded modality via substitution, where graded value is \textquotedblleft unboxed\textquotedblright and substituted into a graded assumption with matching grades. The context concatenation is also used in the conclusion. Finally, the \emph{approximation} rule \textsc{T-Approx} permits a derivation under grade $\ell_1$ to be used under the lower grade $\ell_2$ when $\ell_2\sqsubseteq\ell_1$. For the security instantiation in this report, this orientation is essential: the reverse direction would make the rejected secret-flow example typable.
 
 The rules for record and projection are based on the book of Pierce and Benjamin \cite{pierce2002types}. Since \textsc{FlowSTLC} has a simply-typed base, there are no subtyping rules for record types:
 
 \begin{figure}[H]
 	\centering
 	\begin{prooftree}
-		\AXC{for each $i$, $\Gamma\vdash t_i:T_i$}
+		\AXC{for each $i$, $\Gamma_i\vdash t_i:T_i$}
 		\RightLabel{\textsc{T-Record}}
-		\UIC{$\Gamma\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$}
+		\UIC{$\sum_{i=1}^n\Gamma_i\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$}
 	\end{prooftree}
 	
 	\begin{prooftree}
@@ -238,10 +238,10 @@ The remaining rules specify the types of booleans, natural numbers, unit values,
 		\def\defaultHypSeparation{\hskip .03in}
 		\AXC{$\Gamma_1\vdash t_1:\bool$}
 		\AXC{$\Gamma_2\vdash t_2:T$}
-		\AXC{$\Gamma_2\vdash t_3:T$}
+		\AXC{$\Gamma_3\vdash t_3:T$}
 		\AXC{$\ell\sqsubseteq\srone$}
 		\RightLabel{\textsc{T-Cond}}
-		\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T$}
+		\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2+\Gamma_3\vdash\cond{t_1}{t_2}{t_3}:T$}
 	\end{prooftree}
 	
 	\begin{prooftree}
@@ -298,12 +298,12 @@ This is the same solution in Abel and Bernardy \cite{abel2020unified} and Choudh
 
 \subsection{Operational Semantics}
 
-Once the type-checker shows that a program is well-typed, the AST is interpreted to execute following a standard call-by-value evaluation strategy. To facilitate the proof of \hyperref[thm-pre]{type preservation theorem}, we specify the operational semantics of \textsc{FlowSTLC} in the small-step style. We first specify the value as lambda abstractions and literals:
+Once the type-checker shows that a program is well-typed, the AST is interpreted using a standard call-by-value strategy. To support the preservation and progress theorems, we specify the operational semantics of \textsc{FlowSTLC} in the small-step style. We first specify canonical values:
 
 \begin{figure}[H]
 	\centering
 	$$
-	\textsf{Value}\; v\;::=\;\lam{x\colon T}{t}\;|\; n\;|\; \true\;|\; \false \;|\;\unt
+\textsf{Value}\; v\;::=\;\lam{x\colon T}{t}\;|\;[v]\;|\;\{l_i=v_i^{i\in1..n}\}\;|\; n\;|\; \true\;|\; \false \;|\;\unt
 	$$
 	\caption{Value of \textsc{FlowSTLC}}
 \end{figure}
@@ -319,26 +319,7 @@ The call-by-value reduction relation $t\to t'$ is then defined as follows:
 	\end{prooftree}
 	
 	\begin{prooftree}
-	\begin{prooftree}
-		\AXC{}
-		\RightLabel{\textsc{E-ProjRecord}}
-		\UIC{$\{l_i=v_i^{i\in1..n}\}.l_j\reduce v_j$}
-	\end{prooftree}
-	
-	\begin{prooftree}
-		\AXC{$t\reduce t'$}
-		\RightLabel{\textsc{E-Proj}}
-		\UIC{$t.l\reduce t'.l$}
-	\end{prooftree}
-	
-	\begin{prooftree}
-		\AXC{$t_j\reduce t_j'$}
-		\RightLabel{\textsc{E-Record}}
-		\UIC{$\begin{aligned}
-				&\{l_i=v_i^{i\in1..j-1},l_j=t_j,l_k=t_k^{k\in j+1..n}\}\\
-				&\reduce\{l_i=v_i^{i\in1..j-1},l_j=t_j',l_k=t_k^{k\in j+1..n}\}
-			\end{aligned}$}
-	\end{prooftree}	\AXC{$t_2\reduce t_2'$}
+		\AXC{$t_2\reduce t_2'$}
 		\RightLabel{\textsc{E-App2}}
 		\UIC{$v_1\; t_2\reduce v_1\; t_2'$}
 	\end{prooftree}
@@ -437,6 +418,12 @@ The operational behavior of primitive values, functions, and conditionals is the
 	\end{prooftree}
 	
 	\begin{prooftree}
+		\AXC{$n\text{ is a canonical numeral}$}
+		\RightLabel{\textsc{E-Succ-Nat}}
+		\UIC{$\suc{n}\reduce n+1$}
+	\end{prooftree}
+
+	\begin{prooftree}
 		\AXC{$t\reduce t'$}
 		\RightLabel{\textsc{E-Pred}}
 		\UIC{$\prd{t}\reduce\prd{t'}$}
@@ -455,9 +442,9 @@ The operational behavior of primitive values, functions, and conditionals is the
 	\end{prooftree}
 	
 	\begin{prooftree}
-		\AXC{}
-		\RightLabel{\textsc{E-Pred-Succ}}
-		\UIC{$\prd{\suc t}\reduce t$}
+		\AXC{$n\text{ is a canonical numeral}$}
+		\RightLabel{\textsc{E-Pred-Positive}}
+		\UIC{$\prd{n+1}\reduce n$}
 	\end{prooftree}
 	
 	\begin{prooftree}
@@ -467,9 +454,9 @@ The operational behavior of primitive values, functions, and conditionals is the
 	\end{prooftree}
 	
 	\begin{prooftree}
-		\AXC{}
-		\RightLabel{\textsc{E-IsZero-Succ}}
-		\UIC{$\iszero{\suc t}\reduce\false$}
+		\AXC{$n\text{ is a canonical numeral}$}
+		\RightLabel{\textsc{E-IsZero-Positive}}
+		\UIC{$\iszero{n+1}\reduce\false$}
 	\end{prooftree}
 	\caption{Evaluation Rules for Built-in Booleans, Integers, etc.}
 \end{figure}
@@ -483,16 +470,16 @@ Intuitively, a term of type $\gradedt{\ell}{T}$ is a value that should be used a
 The utility of this approach stems from the algebraic structure of the security semiring. The semiring operations (meet for addition, join for multiplication) naturally model the combination of security constraints:
 
 \begin{itemize}
-	\item \textbf{Context Concatenation} uses the join operation ($\sqcap$) to combine graded assumptions for the same variable. This reflects the principle that if a value can be used publicly, them it should also can be used secretly elsewhere. For example, using a variable in two different parts of a program, one requiring $\secret$ and the other $\public$, results in a combined requirement of $\public$ ($\secret\sqcap\public = \public$).
+	\item \textbf{Context Concatenation} uses semiring addition, the meet operation ($\sqcap$), to combine graded assumptions for the same variable. For example, using a variable in two different parts of a program, one requiring $\secret$ and the other $\public$, results in a combined requirement of $\public$ ($\secret\sqcap\public = \public$).
 	
-	\item \textbf{Context Scalar Multiplication} uses the meet operation ($\sqcup$). to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
+	\item \textbf{Context Scalar Multiplication} uses semiring multiplication, the join operation ($\sqcup$), to strengthen the security requirements of a context. This is crucial in the \textsc{T-Pro} rule for ensuring that a promoted term does not leak its contents to a lower grade.
 \end{itemize}
 
-Fundamentally, the graded modality $\gradedt{\ell}{T}$ serves as a security-aware container. The type system's rules ensure that the "capability" $\ell$ needed to open this container is always respected, thereby statically guaranteeing that high-sensitivity data cannot flow into low-sensitivity outputs.
+Fundamentally, the graded modality $\gradedt{\ell}{T}$ serves as a security-aware container. The typing rules enforce the intended discipline that the "capability" $\ell$ needed to open this container is respected; the noninterference theorem below makes the resulting guarantee precise for the core calculus.
 
 \subsection{A Simple Example}
 
-We demonstrate the system's capability of enforcing noninterferencee by showing the system would reject the following program:
+We demonstrate the system's capability of enforcing noninterference by showing that it rejects the following program:
 $$
 \lam{x:\gradedt{\secret}{T}}{\textbf{let }[y]=x\textbf{ in }y}:\gradedt{\secret}{T}\to^\public T
 $$
@@ -516,46 +503,50 @@ Property (1) is immediate, but there is no rule that allows the derivation of (2
 \begin{lemma}[Permutation]
 	If $\Gamma\vdash t:T$ and $\Delta$ is a permutation of $\Gamma$, then $\Delta\vdash t:T$ and the derivation depth of the latter is the same as the former.
 \end{lemma}
-The proof for the permutation lemma follows directly from the fact that assumptions in contexts are unrelated in a simply-typed context. Then we prove the well-typedness of substitution, this lemma is then used to establish syntactic type safety.
-\begin{lemma}[Well-typed Substitution] 
-	If $\Gamma_1\vdash t_1:T_1$ and $\Gamma_2,x:[T_1]_\ell\vdash t_2:T_2$, then we have $\Gamma_1+\ell\cdot\Gamma_2\vdash[x\mapsto t_1]t_2:T_2$.
+The permutation proof is by induction on the typing derivation. Preservation and progress additionally require the modal substitution, inversion, canonical-forms, and reduction-compatibility lemmas; the appendix records proof sketches and explicitly identifies these obligations.
+\begin{lemma}[Well-typed Modal Substitution]
+	If $\Gamma_v\vdash v:T_1$ and $\Gamma_b,x:[T_1]_\ell\vdash t_2:T_2$, then $\Gamma_b+\ell\cdot\Gamma_v\vdash[x\mapsto v]t_2:T_2$. In the \textsc{E-Let-Unbox} case, inversion of the canonical-box typing (including any final approximation step) exposes the required scaled context before this substitution is applied. No reduction premise is needed, so the lemma does not presuppose preservation.
 \end{lemma}
-We then state the type safety lemma as follows:
-\label{thm-type-safety}
-\begin{theorem}[Type Preservation]
-	If $\Gamma\vdash t:T$, then either $t$ is a value or there exists a $t'$ s.t. $t\rightsquigarrow t'$ with $\Gamma\vdash t:T$.
+We state type safety in the standard two-part form:
+\begin{theorem}[Type Preservation]\label{thm-preservation}
+	If $\Gamma\vdash t:T$ and $t\reduce t'$, then $\Gamma\vdash t':T$.
 \end{theorem}
+\begin{theorem}[Progress]\label{thm-progress}
+	If $\emptyset\vdash t:T$, then either $t$ is a value or there exists $t'$ such that $t\reduce t'$.
+\end{theorem}
+The preservation proof is an induction on the reduction derivation, using the modal/graded substitution lemma (including context scaling) for \textsc{E-Let-Unbox} and \textsc{E-AppAbs}; the remaining cases use congruence. The progress proof is an induction on typing, using canonical-forms lemmas for functions, boxes, records, and natural numbers. We state these standard inductions but omit their routine case analysis.
 
 \subsection{Strong Normalization}
 \label{thm-sn}
 \begin{theorem}[Strong Normalization]
-	If $t$ is a closed and well-typed \text{FlowSTLC} term, then $t$ is normalizable.
+	If $t$ is a closed and well-typed \text{FlowSTLC} term, then every reduction sequence from $t$ terminates (that is, $t$ is strongly normalizing).
 \end{theorem}
+For this recursion-free calculus, the theorem follows by the standard reducibility argument extended with the record, unit, and modal cases; the full induction is omitted here. The termination-insensitive relations below do not by themselves establish normalization, since their expression clauses intentionally do not require termination.
 
 \section{Fundamental Theorems and Noninterference}
 
-Our definition of type semantics by building a logical relation model following the work of Rajani et al. \cite{rajani2018types}. The key difference between our approach and the work of Rajani et al. is that our calculus use a coeffect-based analysis instead of effect-based analysis. 
+We define the type semantics using a logical-relation model following Rajani et al. \cite{rajani2018types}. The key difference from their work is that our calculus uses a coeffect-based analysis rather than an effect-based analysis.
 
-We first define a type-indexed unary relation $\llbracket T\rrbracket_\calv$ which captures the set of irreducible terms that inhabit type $T$. The relation is formally defined as a set of mutually inductive definitions:
+We first define a type-indexed unary relation $\llbracket T\rrbracket_\calv$ for canonical values, together with an expression relation $\llbracket T\rrbracket_\cale$ whose terminating values inhabit type $T$. The relations are formally defined mutually:
 
 \begin{figure}[H]
 	\centering
 	$$
 	\begin{aligned}
-		\llbracket T\rrbracket_\cale &= \{t\mid t\rightsquigarrow^* v\implies v\in\llbracket T\rrbracket_\calv\}\\
+		\llbracket T\rrbracket_\cale &= \{t\mid \forall v.\;(t\rightsquigarrow^* v\ \wedge\ v\text{ is a value})\Rightarrow v\in\llbracket T\rrbracket_\calv\}\\
 		\llbracket\untt\rrbracket_\calv &= \{ \unt \} \\
-		\llbracket\bool\rrbracket_\calv &= \{\true, \false, \iszero{n}\} \\
+		\llbracket\bool\rrbracket_\calv &= \{\true, \false\} \\
 		\llbracket\nat\rrbracket_\calv &= \{n \mid n \in \mathbb{N}\} \\
-		\llbracket T_1\to^\ell T_2 \rrbracket_\calv &= \{\lambda x.t \mid \forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad[x\mapsto v]t\in\llbracket T_2\rrbracket_\cale\} \\
-		\llbracket\gradedt{\ell}{T}\rrbracket_\calv &= \{[t] \mid t\rightsquigarrow^* v\implies v \in \llbracket T \rrbracket_\cale\}\\
-		\bbrac{\{l_i:T_i^{i\in 1..n}\}}_\calv &= \{\{l_i=t_i^{i\in 1..n}\}\mid\forall i.t_i\reduce^* v_i\implies v_i\in\bbrac{T_i}_\cale\}\\
-		\llbracket\Gamma\rrbracket&=\{\gamma\mid x:[T]_\ell\in\Gamma\wedge[\gamma(x)]\in \llbracket\gradedt{\ell}{T}\rrbracket_\cale\}
+		\llbracket T_1\to^\ell T_2 \rrbracket_\calv &= \{\lambda x.t \mid \forall v.\;v\text{ is a value}\wedge[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad[x\mapsto v]t\in\llbracket T_2\rrbracket_\cale\} \\
+		\llbracket\gradedt{\ell}{T}\rrbracket_\calv &= \{[v] \mid v\in\llbracket T\rrbracket_\calv\}\\
+		\bbrac{\{l_i:T_i^{i\in 1..n}\}}_\calv &= \{\{l_i=v_i^{i\in 1..n}\}\mid\forall i.\;v_i\in\bbrac{T_i}_\calv\}\\
+		\llbracket\Gamma\rrbracket&=\{\gamma\mid\forall x:[T]_\ell\in\Gamma.\;[\gamma(x)]\in\llbracket\gradedt{\ell}{T}\rrbracket_\cale\}
 	\end{aligned}
 	$$
 	\caption{Unary value, expression, and context relations}
 \end{figure}
 
-For the function type $T_1\to^\ell T_2$, the value inhabiting its interpretation are abstractions $\lambda x.t$ where the substitution of value $v$ into the body $t$ is in the interpretation of the expression relation at the result type. The interpretation of the graded modal type $\gradedt{\ell}{T}$ is the set of values which are the promotions of terms in the interpretation $T$. Finally, the $\llbracket\Gamma\rrbracket$ relation defines an interpretation of the context $\Gamma$ as a set of maps from variables to expressions (denoted by $\gamma$) that can be substituted for each variable.
+For the function type $T_1\to^\ell T_2$, the value interpretation contains abstractions whose bodies remain in the result expression relation after substitution of every admissible boxed value. The graded modal value interpretation contains boxes $[v]$ whose underlying value satisfies the relation for $T$. The expression relation requires every terminating reduction to a canonical value in the value relation; it is therefore termination-insensitive. Finally, $\llbracket\Gamma\rrbracket$ relates substitutions pointwise for every graded assumption in $\Gamma$.
 
 We also define a binary relation which captures \emph{indistinguishability} from the perspective of an adversary level $adv\in\secure$. The relation is formally defined by the following figure:
 
@@ -564,49 +555,49 @@ We also define a binary relation which captures \emph{indistinguishability} from
 	\small
 	$$
 	\begin{aligned}
-		\llbracket T\rrbracket^{adv}_\cale &= \{(t_1,t_2)\mid t_1\rightsquigarrow^* v_1\wedge t_2\rightsquigarrow^* v_2\implies\\
+		\llbracket T\rrbracket^{adv}_\cale &= \{(t_1,t_2)\mid \forall v_1,v_2.\;(t_1\rightsquigarrow^* v_1\wedge t_2\rightsquigarrow^* v_2\wedge v_1,v_2\text{ are values})\Rightarrow\\
 		&\qquad\qquad (v_1,v_2)\in\llbracket T\rrbracket^{adv}_\calv\}\\
 		\llbracket\untt\rrbracket^{adv}_\calv &= \{(\unt,\unt)\}\\
-		\llbracket\bool\rrbracket^{adv}_\calv &= \{(b,b)\mid b\in\{\true,\false, \iszero{n}\}\}\\
+		\llbracket\bool\rrbracket^{adv}_\calv &= \{(b,b)\mid b\in\{\true,\false\}\}\\
 		\llbracket\nat\rrbracket^{adv}_\calv &= \{(n,n)\mid n\in\mathbb N\}\\
 		\llbracket T_1\to^\ell T_2\rrbracket^{adv}_\calv &=
 		\{(\lambda x.t_1,\lambda x.t_2)\mid\\
-		&\quad(\forall v,v'.([v],[v'])\in\llbracket \gradedt{\ell}{T_1}\rrbracket^{adv}_\cale\\
+		&\quad(\forall v,v'.\;v,v'\text{ are values}\wedge([v],[v'])\in\llbracket \gradedt{\ell}{T_1}\rrbracket^{adv}_\cale\\
 		&\qquad\implies ((x\mapsto v)t_1,(x\mapsto v')t_2)\in\llbracket T_2\rrbracket^{adv}_\cale)\\
-		&\qquad\wedge(\forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_1\in\llbracket T_2\rrbracket_\cale)\\
-		&\qquad\wedge(\forall v.[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_2\in\llbracket T_2\rrbracket_\cale)\}\\
+		&\qquad\wedge(\forall v.\;v\text{ is a value}\wedge[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_1\in\llbracket T_2\rrbracket_\cale)\\
+		&\qquad\wedge(\forall v.\;v\text{ is a value}\wedge[v]\in\llbracket\gradedt{\ell}{T_1}\rrbracket_\cale\implies\\ &\qquad\qquad[x\mapsto v]t_2\in\llbracket T_2\rrbracket_\cale)\}\\
 		\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\calv &= \left\{\begin{aligned}
-			&\{([v_1,v_2])\mid (v_1,v_2)\in\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\cale\}\\&\quad\ell\le adv\\
-			&\{([v_1,v_2])\mid v_1\in\llbracket\gradedt{\ell}{T}\rrbracket_\cale\wedge v_2\in\llbracket\gradedt{\ell}{T}\rrbracket_\cale\}\\&\quad\neg\ell\le adv
+			&\{([v_1],[v_2])\mid (v_1,v_2)\in\llbracket T\rrbracket^{adv}_\calv\}\\&\quad\ell\le adv,\\
+			&\{([v_1],[v_2])\mid v_1\in\llbracket T\rrbracket_\calv\wedge v_2\in\llbracket T\rrbracket_\calv\}\\&\quad\neg(\ell\le adv)
 		\end{aligned}\right.\\
-		\bbrac{\{l_i:T_i^{i\in 1..n}\}}^{adv}_\calv &= \{(\{l_i=t_i^{i\in 1..n}\},\{l_i=t_i'^{i\in 1..n}\})\mid\\
-		&\quad\forall i.t_i\reduce^* v_i\wedge t_i'\reduce^* v_i'\implies\\ &\qquad(v_i,v_i')\in\bbrac{T_i}^{adv}_\cale\}\\
-		\llbracket\Gamma\rrbracket^{adv}&=\{(\gamma_1,\gamma_2)\mid x:[T]_\ell\in\Gamma\\
-		&\qquad\wedge[\gamma_1(x),\gamma_2(x)]\in\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\cale\}
+		\bbrac{\{l_i:T_i^{i\in 1..n}\}}^{adv}_\calv &= \{(\{l_i=v_i^{i\in 1..n}\},\{l_i=v_i'^{i\in 1..n}\})\mid\\
+		&\quad\forall i.\;(v_i,v_i')\in\bbrac{T_i}^{adv}_\calv\}\\
+		\llbracket\Gamma\rrbracket^{adv}&=\{(\gamma_1,\gamma_2)\mid\forall x:[T]_\ell\in\Gamma.\\
+		&\qquad([\gamma_1(x)],[\gamma_2(x)])\in\llbracket\gradedt{\ell}{T}\rrbracket^{adv}_\cale\}
 	\end{aligned}
 	$$
 	\normalsize
 	\caption{Binary value, expression, and context relations}
 \end{figure}
 
-The binary relation specified here only capture the concept \emph{termination-insensitive noninterference} \cite{volpano1996sound}, since we are only interested in the relation of the evaluation results. To make it termination sensitve, we need to also prove the co-termination of the two terms in the binary relation. Establishing termination-sensitive noninterference is outside the scope of this work and is left for future investigation.
+The binary relation specified here captures \emph{termination-insensitive noninterference} \cite{volpano1996sound}: it constrains observations when both evaluations terminate, but does not require co-termination. Establishing termination-sensitive noninterference would require an additional co-termination argument and is outside the scope of this work.
 
-For the interpretation of the function type $T_1\to^\ell T_2$, the binary relation relates two abstractions where when two arbitrary values of $\gradedt{\ell}{T_1}$ are substituted into their bodies, the substitution results would relate at the result type $T_2$. The most important interpretation here is the one for the graded type $\gradedt{\ell}{T}$. For the graded types, if the graded $\ell$ is less or equal to the adversary level $adv$, then $t_1$ and $t_2$ must be related at the type $T$. Otherwise, $t_1$ and $t_2$ only need to be in their corresponding unary value interpretation and thus cannot be distinguished. This precisely captures the intuition that a low level adversary (i.e. $adv=\public$) cannot distinguish two secret values (i.e. $\ell=\secret$). Finally, the interpretation of contexts $\llbracket\Gamma\rrbracket^{adv}$ reuses the interpretation for graded types to capture the grading.
+For function types, the binary relation quantifies over pairs of related boxed arguments and relates the resulting bodies; the two unary side conditions ensure each abstraction is well typed. For a modality, grades observable by $adv$ require related underlying values, while grades not observable by $adv$ require only unary validity. In the two-point security order, the non-observable case is exactly $adv=\public$ and $\ell=\secret$. Contexts are related pointwise through this modality interpretation.
 
 \subsection{Fundamental Theorems and Noninterference Property}
 
 To formalize the noninterference property for our type system, we need a so-called "fundamental theorem" that connects the syntactic typing with semantic interpretation. We define a unary and a binary version of the theorem for the two types of relations above respectively.
 
 \begin{theorem}[Unary Fundamental Theorem]
-    For all well-typed terms $\Gamma\vdash t:T$, if $\gamma\in\llbracket\Gamma\rrbracket$, then we have $\gamma\; t\in\llbracket T\rrbracket_\cale$. Where $\gamma\; t$ represents the result of applying the subtitution of the mapping from variables to terms given by $\gamma$.
+    For all well-typed terms $\Gamma\vdash t:T$, if $\gamma\in\llbracket\Gamma\rrbracket$, then $\gamma\; t\in\llbracket T\rrbracket_\cale$, where $\gamma\; t$ denotes capture-avoiding substitution of the terms in the mapping $\gamma$.
 \end{theorem}
 
-The theorem states that, if $t$ is a term of type $T$ under a context $\Gamma$, and $\gamma$ is a unary substitution in the interpretation of $\Gamma$. Then we can say that $\gamma\; t$ is in the unary relation at the type $T$.
+The theorem states that, if $t$ is a term of type $T$ under a context $\Gamma$, and $\gamma$ is a unary substitution in the interpretation of $\Gamma$, then $\gamma\; t$ is in the unary relation at type $T$. Its proof also uses grade-erasure of the unary context relation: because the unary interpretation of $\square_\ell T$ is independent of $\ell$, the interpretations of contexts that differ only in grades coincide.
 
 However, since the binary relation involves an external observer, we need additional structure to formally specify it. This needed structure is a subclass of semirings which we call \emph{noninterfering semirings}:
 
 \begin{definition}[Noninterfering Semiring]
-    A noninterfering semiring $\mathcal R$ is a pre-ordered semring with the following additional axioms:
+    A noninterfering semiring $\mathcal R$ is an ordered semiring (the order and both operations are monotone) with the following additional axioms:
     \begin{itemize}
         \item Weak idempotence of multiplication: $r\cdot r\le r$
         \item Antisymmetry: $(r\le s)\wedge(s\le r)\implies r=s$
@@ -617,36 +608,37 @@ However, since the binary relation involves an external observer, we need additi
 \end{definition}
 
 \begin{proposition}[Properties of Noninterfering Semiring]
-    For a noninterfering semiring and two elements $r_1,r_2,s$ in it, we have the following properties:
+    For an ordered noninterfering semiring and elements $r_1,r_2,s$, the following properties hold:
     \begin{itemize}
         \item Decreasing addition: if $r_1\le r_2$, then $r_1+s\le r_2$.
         \item Increasing multiplication: if $r_1\le r_2$, then $r_1\le s\cdot r_2$ and $r_1\le r_2\cdot s$.
     \end{itemize}
-    We can also derive the minimality of $1$ and the maximality of $0$ from these two properties respectively.
+    For the security semiring, $1$ is minimal and $0$ is maximal by definition; these extrema are used in the variable and weakening cases.
 \end{proposition}
 
 \begin{proposition}[Security Semiring is Noninterfering]
     The induced semiring $\secure$ is noninterfering, with
     \begin{itemize}
-        \item Weak idempotence of multiplication trivially follows the property of $\sqcup$.
+        \item Weak idempotence of multiplication follows from idempotence of $\sqcup$.
         \item Antisymmetry follows from the ordering.
-        \item Minimality of $1$ and the maximality of $0$ follows from the definition of $\secure$.
+        \item Minimality of $1$ and maximality of $0$ follow from the definition of $\secure$.
     \end{itemize}
 \end{proposition}
 
-Now we can formally give the binary version of the fundamental theorem on noninterfering semirings:
+Now we can formally give the binary version of the fundamental theorem. For a general semiring, the statement assumes the context-scaling, context-combination, and reduction-compatibility lemmas needed in the \textsc{T-Pro}, \textsc{T-Let}, record, and conditional cases; these do not follow from the four axioms above alone:
 
 \begin{theorem}[Binary Fundamental Theorem]
-    For all well-typed terms $\Gamma\vdash t:T$ with a semiring $\mathcal R$ parameterizing the calculus that is \emph{noninterfering}, if $(\gamma_1,\gamma_2)\in\llbracket\Gamma\rrbracket^{adv}$, then we have $(\gamma_1\; t,\gamma_2\; t)\in\llbracket T\rrbracket^{adv}_\cale$. Where $\gamma_1\; t$ and $\gamma_2\; t$ represents the result of applying the multi-substitution of the mapping from variables to terms given by $\gamma_1$ and $\gamma_2$.
+    For all well-typed terms $\Gamma\vdash t:T$ in a calculus parameterized by a noninterfering semiring $\mathcal R$ satisfying these compatibility lemmas, if $(\gamma_1,\gamma_2)\in\llbracket\Gamma\rrbracket^{adv}$, then $(\gamma_1\; t,\gamma_2\; t)\in\llbracket T\rrbracket^{adv}_\cale$, where each substitution is capture avoiding.
 \end{theorem}
 
 With the fundamental theorem established, we can now state the final theorem of noninterference:
 
-\begin{theorem}[Noninterfernce of \textsc{FlowSTLC}]
-    For all judgements $x:[T_1]_r\vdash t:\gradedt{adv}{\base}$ where $adv\le r$ and $adv\ne r$, then given $\emptyset\vdash v_1:T$ and $\emptyset\vdash v_2:T$ then $[x\mapsto v_1]t\equiv [x\mapsto v_2]t$. Where $\equiv$ is the full $\beta$-equality of terms and $\base$ denotes an arbitrary base type.
+\begin{theorem}[Termination-insensitive noninterference of \textsc{FlowSTLC}]
+    For every judgement $x:[T_1]_r\vdash t:\gradedt{adv}{\base}$ with $adv\le r$ and $adv\ne r$, and closed values $\emptyset\vdash v_1:T_1$ and $\emptyset\vdash v_2:T_1$, the pair
+    $([x\mapsto v_1]t,[x\mapsto v_2]t)$ belongs to $\llbracket\gradedt{adv}{\base}\rrbracket^{adv}_\cale$. In particular, if both evaluations terminate with $[b_1]$ and $[b_2]$, then $b_1=b_2$. The conclusion is equality of the observable base values, not full $\beta$-equality of the two terms.
 \end{theorem}
 
-For a complete proof for the fundamental theorem and the noninterference theorem, please refer to the \hyperref[app-b]{Appendix B}.
+Appendix B gives proof sketches for the fundamental and noninterference theorems and records the compatibility lemmas required for a complete formal proof.
 
 \section{Bidirectional Type Checking Algorithm}
 
@@ -696,10 +688,10 @@ The system transitions from synthesis to checking:
     \BIC{$\Phi\vdash t\checking T_2\dashv\Delta$}
 \end{prooftree}
 
-For function abstractions, we check the function body against its return type. The algorithm verifies that the calculated usage of the bound variable $x$ must $\le$ the declared grade $r$ on the arrow:
+For function abstractions, we check the function body against its return type. The algorithm verifies that the declared grade $r$ is no greater than the usage grade inferred for the bound variable $x$:
 
 \begin{prooftree}
-    \AXC{$\Phi,x:T_1\vdash t\checking T_2$}
+    \AXC{$\Phi,x:T_1\vdash t\checking T_2\dashv\Delta$}
     \AXC{$r\le\Delta(x)$}
     \RightLabel{\textsc{BD-Abs}}
     \BIC{$\Phi\vdash\lam{x:T_1}{t}\checking T_1\to^r T_2\dashv\Delta\setminus\{x\}$}
@@ -732,7 +724,7 @@ Modality elimination synthesizes the modality type $\gradedt{r}{T}$ and then che
     \TIC{$\Phi\vdash\unp{x}{t_1}{t_2}\checking T_2\dashv\Delta_1+(\Delta_2\setminus\{x\})$}
 \end{prooftree}
 
-For the conditional, we check the types of the condition and both branches. The usage contexts of the branches is joined to ensure we account for the worst-case usage of either execution path. The rule doesn't explicitly requires the grade of the condition must be $\le\srone$. Instead, we simply combine the usage by semiring addition and postpone the check to a lower level in the typing derivation.
+For the conditional, we check the condition and both branches. Their usage contexts are combined by semiring addition, conservatively accounting for the requirements of either execution path. This algorithmic rule is schematic: a sound implementation must also enforce the declarative side condition that the condition's context-scaling grade is at most $\srone$.
 
 \begin{prooftree}
     \def\defaultHypSeparation{\hskip .0in}
@@ -788,11 +780,11 @@ and the typing succeeds.
     \caption{\textsc{FlowSTLC} Implementation Pipeline}
 \end{figure}
 
-We implemented \textsc{FlowSTLC} as a small interpreter pipeline in Java 17, with syntax defined using ANTLR4\cite{parr2013definitive} and semantics enforced by a typechecker base on the bidirectional typing system we developed in the previous section. The front-end is specified by \texttt{FlowSTLCLexer.g4} and \texttt{FlowSTLCParser.g4}, which define a Haskell-like conventional expression language (literals, variables, let/if, sequencing, records, arithmetic/boolean operators) plus explicit security annotations ($\secret$/$\public$) and modalities. Types include built-in base types (booleans, integers, strings, and unit type), record types, modality types, and graded function types written \texttt{T1\textasciicircum r -> T2}. The parse tree produced by ANTLR is converted into a small, explicit AST using \texttt{ASTBuilder}, which maps each grammar alternative to a dedicated node (e.g., \texttt{LetExpr}, \texttt{IfExpr}, \texttt{FunctionCallExpr}, \texttt{ModalityExpr}, \texttt{RecordExpr}) and similarly builds the type nodes (\texttt{FunctionType}, \texttt{ModalityType}, \texttt{RecordType}, etc.). This separation lets later phases operate on stable, type-theory-aligned constructs rather than parser artifacts.
+We implemented \textsc{FlowSTLC} as a small interpreter pipeline in Java 17, with syntax defined using ANTLR4\cite{parr2013definitive} and semantics enforced by a typechecker based on the bidirectional typing system developed in the previous section. The front-end is specified by \texttt{FlowSTLCLexer.g4} and \texttt{FlowSTLCParser.g4}, which define a Haskell-like expression language (literals, variables, let/if, sequencing, records, arithmetic/boolean operators) plus explicit security annotations ($\secret$/$\public$) and modalities. Types include built-in base types (booleans, integers, strings, and unit), record types, modality types, and graded function types written \texttt{T1\textasciicircum r -> T2}. The parse tree produced by ANTLR is converted into a small, explicit AST using \texttt{ASTBuilder}, which maps each grammar alternative to a dedicated node (e.g., \texttt{LetExpr}, \texttt{IfExpr}, \texttt{FunctionCallExpr}, \texttt{ModalityExpr}, \texttt{RecordExpr}) and similarly builds the type nodes (\texttt{FunctionType}, \texttt{ModalityType}, \texttt{RecordType}, etc.). This separation lets later phases operate on stable, type-theory-aligned constructs rather than parser artifacts.
 
 The core static semantics is implemented in \texttt{BidirectionalTypeChecker} using two mutually recursive judgments: a synthesis mode and a checking mode. Besides the rules specified in appendix, we also added a few rules to make the language more practical. For example, type checking rules for arithmetic/logical/comparison/(in)equality operators, intrinsic function calls, and sequencing constructs. Type errors are surfaced as \texttt{TypeError} exceptions with human-readable diagnostics.
 
-The dynamic semantics is realized by a straightforward environment-based interpreter (\texttt{EvalVisitor} + \texttt{Interpreter}) over the AST. Top-level constants evaluate to values and functions evaluate to closures capturing their lexical environment; calls extend the closure environment with evaluated arguments, giving standard call-by-value, lexically scoped execution. Importantly, security labels are enforced statically and erased dynamically: \texttt{ModalityExpr} evaluates as a runtime no-op (it simply evaluates its inner expression), matching the intended "filtered label" interpretation where confidentiality is a static property of programs rather than a runtime tag. Intrinsics implement basic I/O at the value level. Finally, we provide an language server (LSP4J) to support interactive development: it reparses documents and reruns the typechecker on edits to publish diagnostics, and implements hover and semantic tokens. Build and packaging are automated via Maven, producing shaded runnable jars for both the CLI compiler driver and the language server entry point.
+The dynamic semantics is realized by a straightforward environment-based interpreter (\texttt{EvalVisitor} + \texttt{Interpreter}) over the AST. Top-level constants evaluate to values and functions evaluate to closures capturing their lexical environment; calls extend the closure environment with evaluated arguments, giving standard call-by-value, lexically scoped execution. Importantly, security labels are enforced statically and erased dynamically: \texttt{ModalityExpr} evaluates as a runtime no-op (it simply evaluates its inner expression), matching the intended "filtered label" interpretation where confidentiality is a static property of programs rather than a runtime tag. Intrinsics implement basic I/O at the value level. Finally, we provide a language server (LSP4J) to support interactive development: it reparses documents and reruns the typechecker on edits to publish diagnostics, and implements hover and semantic tokens. Build and packaging are automated via Maven, producing shaded runnable jars for both the CLI compiler driver and the language server entry point.
 
 The project implementation can be found at the GitHub repository \href{https://github.com/nofe1248/cs315-term-project}{nofe1248/cs315-term-project}.
 
@@ -866,19 +858,19 @@ Language-based IFC has a rich literature. Sabelfeld and Myers \cite{sabelfeld200
 
 More recently, graded type theories have been proposed to generalize such analyses. Graded type systems annotate types with additional information ("grades") to capture various properties of programs. For example, the Granule language \cite{orchard2019quantitative} uses graded modalities to track the effects and coeffects of program. In information flow use-cases, types are graded by a security lattice, allowing automatic enforcement of noninterference. Moon et al. introduce the Graded Modal Dependent Type Theory (\textsc{GrTT}) \cite{moon2021graded}, which extends dependent type system with graded modality and show that the grades can be effective at reasoning of programs. This work demonstrates that graded modality can capture fine-grained flow policies in types. Similarly, Marshall and Orchard \cite{marshall2023graded} demonstrated a graded-modal framework that can enforce confidentiality and even integrity simultaneously.
 
-Other approaches include dynamic IFC (e.g. LIO monad in Haskell \cite{stefan2011flexible}) or hybrid systems, but our focus is purely static. In summary, while classical security type sytems (JIF, FlowCaml, etc.) enforce noninterference via fixed lattice-labels. Our project draws on these ideas: we adapt graded modalities to a simple functional language to track information flows more flexibly.
+Other approaches include dynamic IFC (e.g. the LIO monad in Haskell \cite{stefan2011flexible}) or hybrid systems, but our focus is purely static. Classical security type systems (JIF, FlowCaml, etc.) enforce noninterference via fixed lattice labels. Our project draws on these ideas while adapting graded modalities to a simple functional language to track information flows more flexibly.
 
 \section{Further Work and Conclusion}
 
-In summary, \textsc{FlowSTLC} has demonstrated that a simple lambda calculus with graded necessity can enforce secure information flow. By instantiating grades with the security semiring $\secure$, our system statically tracks data labels at the type level. By utilizing typing rules that enforce the noninterference property, we guarantee that well-typed \textsc{FlowSTLC} programs cannot leak secrets. 
+In summary, \textsc{FlowSTLC} presents a simple lambda calculus with graded necessity for enforcing secure information flow. By instantiating grades with the security semiring $\secure$, the system tracks data labels at the type level. The stated noninterference result is conditional on the compatibility lemmas listed above; within those assumptions, well-typed core-calculus programs cannot change an observable base result by varying a high-grade input.
 
-While the results are promising, \textsc{FlowSTLC} in its current form is an \emph{idealized model} with clear limitations. For one, the core calculus is deliberately small and omits many practical language features. It has only base types and functions (no records, no algebraic data types, no recursive types, etc.), and it does not include polymorphism or dependent typing. As observed in prior work, static IFC models with minimal features have historically been considered "too limited or too restrictive to be used in practice" \cite{myers1999jflow}. Thus, our model inherits this limitation of expressiveness. Second, \textsc{FlowSTLC} exists only as a theoretical calculus and has not been integrated into a production-ready programming language. We consider that bridging this gap is a non-trivial challenge. For example, a recent survey noted that even in a rich language like Rust, implementing a sound IFC system requires "building an ad-hoc effect tracking system using bleeding-edge features of the Rust compiler". Finally, we have not evaluated performance or conducted real-world case studies. There are no benchmarks on typing or runtime costs, nor have we applied \text{FlowSTLC} to any non-trivial programs. In contrast, systems like JFlow and Cocoon \cite{lamba2024cocoon} have shown that static IFC checking can incur negligible overhead. Without such evaluation, the practical impact of \textsc{FlowSTLC} remains speculative.
+While the results are promising, \textsc{FlowSTLC} in its current form is an \emph{idealized model} with clear limitations. For one, the core calculus is deliberately small and omits many practical language features. It includes records and base types, but no algebraic data types, recursive types, polymorphism, or dependent typing. As observed in prior work, static IFC models with minimal features have historically been considered "too limited or too restrictive to be used in practice" \cite{myers1999jflow}. Thus, our model inherits this limitation of expressiveness. Second, \textsc{FlowSTLC} exists only as a theoretical calculus and has not been integrated into a production-ready programming language. We consider that bridging this gap is a non-trivial challenge. For example, a recent survey noted that even in a rich language like Rust, implementing a sound IFC system requires "building an ad-hoc effect tracking system using bleeding-edge features of the Rust compiler". Finally, we have not evaluated performance or conducted real-world case studies. There are no benchmarks on typing or runtime costs, nor have we applied \text{FlowSTLC} to any non-trivial programs. In contrast, systems like JFlow and Cocoon \cite{lamba2024cocoon} have shown that static IFC checking can incur negligible overhead. Without such evaluation, the practical impact of \textsc{FlowSTLC} remains speculative.
 
 Given these limitations, there are many promising directions for future work. We highlight several concrete directions:
 \begin{itemize}
     \item \textbf{Extending the type system with dependent types and polymorphism.} One natural extension is to enrich \textsc{FlowSTLC} with more expressive typing disciplines. In particular, adding \emph{dependent types} could allow security policies to depend on program values and thus encode more precise confidentiality and declassification properties. Prior work (e.g. DepSec for Idris language \cite{gregersen2019dependently}) shows that dependent types increase the expressiveness of static IFCs. Similarly, introducing \emph{parametric polymorphism} would permit writing generic secure functions without duplicating code.
     \item \textbf{Combining graded modalities with effect, usage, or resource typing.} Another interesting direction is to study how the security grading interacts with other static analyses. Graded type theories generalize both effect systems (via graded monads) and coeffect/usage systems (via graded comonads). For example, \textsc{FlowSTLC} might be extended with an effect system that tracks side-effects or I/O on secret data (similar to Koka's effect typing system \cite{leijen2014koka} \cite{leijen2016algebraic}). Alternatively, one could explore \emph{coeffect-like} analyses where the context is graded alongside security. Integrating graded security labels with \emph{resource-} or \emph{capability-aware typing} could yield richer guarantees.
-    \item \textbf{Embedding \textsc{FlowSTLC} in a practical language or compiler.} To bring theory closer to practice, a implementation of \text{FlowSTLC}'s typing discipline in a real programming environment is essential. One approach is to create a domain-specific language (DSL) or library for an existing language (e.g. Haskell or OCaml) that enforces these graded security types. Recent work (e.g. \cite{lamba2024cocoon}) shows that it is possible to add IFC to Rust without modifying the compiler. Similarly, the Granule project \cite{orchard2019quantitative} demonstrates that a language with graded, linear, and dependent types can be realized in practice. Following these examples, we could adapt \textsc{FlowSTLC}'s type checker into an implementation (for instance, a GHC plugin) to test on larger codebases. Such an embedding would enable empirical measurement of type-checking performance and runtime costs. It would also allow exploration of practical issues (language interoperability, tooling integration, etc.) that are vital for any real applications of our outcome.
+    \item \textbf{Embedding \textsc{FlowSTLC} in a practical language or compiler.} To bring theory closer to practice, an implementation of \textsc{FlowSTLC}'s typing discipline in a real programming environment is essential. One approach is to create a domain-specific language (DSL) or library for an existing language (e.g. Haskell or OCaml) that enforces these graded security types. Recent work (e.g. \cite{lamba2024cocoon}) shows that it is possible to add IFC to Rust without modifying the compiler. Similarly, the Granule project \cite{orchard2019quantitative} demonstrates that a language with graded, linear, and dependent types can be realized in practice. Following these examples, we could adapt \textsc{FlowSTLC}'s type checker into an implementation (for instance, a GHC plugin) to test on larger codebases. Such an embedding would enable empirical measurement of type-checking performance and runtime costs. It would also allow exploration of practical issues (language interoperability, tooling integration, etc.) that are vital for any real applications of our outcome.
 \end{itemize}
 
 In conclusion, \textsc{FlowSTLC} provides a formal foundation for secure information flow via graded modal types, but many challenges remain. Future work will pursue richer type features, deeper integration with program reasoning (effects, resources), and practical implementation efforts. We are optimistic that bridging these gaps will bring secure flow typing closer to real-world programming. By pursuing these directions, we hope to develop a mature framework that combines the rigorous guarantees of our type-theoretic approach with the expressiveness and practicality needed for deployed systems.
@@ -903,21 +895,21 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 		| $t$ $t$ : \textit{application}
 		| $\lam{x}{t}$ : \textit{abstraction}
 		| $[t]$ : \textit{packing}
-		| $\unp{x}{t\colon T}{t}$ : \textit{unpacking}
+		| $\unp{x}{t_1}{t_2}$ : \textit{unpacking}
 		| $\{l_i=t_i^{i\in1..n}\}$ : \textit{record}
 		| $t.l$ : \textit{projection}
 		| $\true$ : \textit{true constant}
 		| $\false$ : \textit{false constant}
 		| $\cond{t}{t}{t}$ : \textit{conditional}
 		| $n$ : \textit{natural number}
+		| $\suc{t}$ : \textit{successor}
+		| $\prd{t}$ : \textit{predecessor}
 		| $\iszero{t}$ : \textit{zero test}
 		| $\unt$ : \textit{unit}
 		| $\une{t}{t}$ : \textit{unit elimination}
 		;;
 		$n$ : \textsf{Number} ::=
-		| $0$ : \textit{zero constant}
-		| $\suc{n}$ : \textit{successor}
-		| $\prd{n}$ : \textit{predecessor}
+		| $n\in\mathbb{N}$ : \textit{canonical numeral}
 		;;
 		$T$ : \textsf{Type} ::=
 		| $\base$ : \textit{base type}
@@ -932,6 +924,7 @@ We are also deeply thankful to all members of the Theoretical Computer Science S
 		;;
 		$v$ : \textsf{Value} ::=
 		| $\lam{x\colon T}{t}$ : \textit{abstraction value}
+		| $[v]$ : \textit{boxed value}
 		| $\{l_i=v_i^{i\in1..n}\}$ : \textit{record value}
 		| $n$ : \textit{natural number value}
 		| $\true$ : \textit{true value}
@@ -960,7 +953,7 @@ The security level semiring $\mathbb{S}$ is a two-point lattice of security leve
 	\item Multiplication as the join $r\cdot s=r\sqcup s$
 \end{itemize}
 \end{definition}
-See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a semiring.
+See \hyperref[app-b]{Appendix B} for a proof that this algebra is indeed a semiring.
 
 \subsubsection{Auxiliary Definitions}
 \label{def-concat}
@@ -969,6 +962,10 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
     \begin{aligned}
         \emptyset+\Gamma&=\Gamma\\
         \Gamma+\emptyset&=\Gamma\\
+        (\Gamma,x:[T]_r)+\Gamma'&=(\Gamma+\Gamma'),x:[T]_r
+            \quad (x\notin dom(\Gamma'))\\
+        \Gamma+(\Gamma',x:[T]_s)&=(\Gamma+\Gamma'),x:[T]_s
+            \quad (x\notin dom(\Gamma))\\
         (\Gamma,x:[T]_r)+(\Gamma',x:[T]_s)&=(\Gamma+\Gamma'),x:[T]_{r+s}
     \end{aligned}
     $$
@@ -1025,9 +1022,9 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{for each $i$, $\Gamma\vdash t_i:T_i$}
+	\AXC{for each $i$, $\Gamma_i\vdash t_i:T_i$}
 	\RightLabel{\textsc{T-Record}}
-	\UIC{$\Gamma\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$}
+	\UIC{$\sum_{i=1}^n\Gamma_i\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$}
 \end{prooftree}
 
 \begin{prooftree}
@@ -1052,10 +1049,10 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	\def\defaultHypSeparation{\hskip .03in}
 	\AXC{$\Gamma_1\vdash t_1:\bool$}
 	\AXC{$\Gamma_2\vdash t_2:T$}
-	\AXC{$\Gamma_2\vdash t_3:T$}
+	\AXC{$\Gamma_3\vdash t_3:T$}
 	\AXC{$\ell\sqsubseteq\srone$}
 	\RightLabel{\textsc{T-Cond}}
-	\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T$}
+	\QuaternaryInfC{$\ell\cdot\Gamma_1+\Gamma_2+\Gamma_3\vdash\cond{t_1}{t_2}{t_3}:T$}
 \end{prooftree}
 
 \begin{prooftree}
@@ -1191,6 +1188,12 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \end{prooftree}
 
 \begin{prooftree}
+	\AXC{$n\text{ is a canonical numeral}$}
+	\RightLabel{\textsc{E-Succ-Nat}}
+	\UIC{$\suc{n}\reduce n+1$}
+\end{prooftree}
+
+\begin{prooftree}
 	\AXC{$t\reduce t'$}
 	\RightLabel{\textsc{E-Pred}}
 	\UIC{$\prd{t}\reduce\prd{t'}$}
@@ -1209,9 +1212,9 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-Pred-Succ}}
-	\UIC{$\prd{\suc t}\reduce t$}
+	\AXC{$n\text{ is a canonical numeral}$}
+	\RightLabel{\textsc{E-Pred-Positive}}
+	\UIC{$\prd{n+1}\reduce n$}
 \end{prooftree}
 
 \begin{prooftree}
@@ -1221,9 +1224,9 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \end{prooftree}
 
 \begin{prooftree}
-	\AXC{}
-	\RightLabel{\textsc{E-IsZero-Succ}}
-	\UIC{$\iszero{\suc t}\reduce\false$}
+	\AXC{$n\text{ is a canonical numeral}$}
+	\RightLabel{\textsc{E-IsZero-Positive}}
+	\UIC{$\iszero{n+1}\reduce\false$}
 \end{prooftree}
 
 \subsubsection{Bidirectional Typing}
@@ -1242,7 +1245,7 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \end{prooftree}
 
 \begin{prooftree}
-    \AXC{$\Phi,x:T_1\vdash t\checking T_2$}
+    \AXC{$\Phi,x:T_1\vdash t\checking T_2\dashv\Delta$}
     \AXC{$r\le\Delta(x)$}
     \RightLabel{\textsc{BD-Abs}}
     \BIC{$\Phi\vdash\lam{x:T_1}{t}\checking T_1\to^r T_2\dashv\Delta\setminus\{x\}$}
@@ -1341,23 +1344,22 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
     \AXC{$\Phi\vdash t_1\checking\untt\dashv\Delta_1$}
     \AXC{$\Phi\vdash t_2\checking T\dashv\Delta_2$}
     \RightLabel{\textsc{BD-Unit-Elim}}
-    \BIC{$\Phi\vdash\une{\unt}{t}\checking T\dashv\Delta_1+\Delta_2$}
+    \BIC{$\Phi\vdash\une{t_1}{t_2}\checking T\dashv\Delta_1+\Delta_2$}
 \end{prooftree}
 
-\subsection{Proofs}
+\subsection{Proofs}\label{app-b}
 \subsubsection{Security Level Semiring}
-\label{app-b}
 \begin{proof}\leavevmode
 	\begin{itemize}
 		\item \textbf{Associativity of addition}: $(a+b)+c=a+(b+c)$
 		
-		This is trivial since the semiring addition is meet, and join is associative in a lattice.
+		This is trivial since the semiring addition is meet, which is associative in a lattice.
 		\item \textbf{Commutativity of addition}: $a+b=b+a$
 		
 		This is also trivial since meet is commutative in a lattice.
 		\item \textbf{Additive identity}: $a+\srzero=a$ for all $a$
 		
-		Since $0=\secret$, and $\secret$ be the maximum in $\secure$, we have
+		Since $0=\secret$ and $\secret$ is the maximum element of $\secure$, we have
 		\begin{equation}
 			\begin{aligned}
 				\secret\sqcap\secret&=\secret\\
@@ -1401,35 +1403,35 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	\begin{itemize}
 		\item \emph{Case} \textsc{T-Var}: $\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$.
 		
-		Let $\gamma\in\llbracket\srzero\cdot\Gamma,x:[T]_\srone\rrbracket$. By the definition of the unary relation, $\gamma$ maps $x$ s.t. $\llbracket\gamma(x)\rrbracket\in\bbrac{\gradedt{\srone}{T}}_\cale$. The unary relation for graded modalities $\bbrac{\gradedt{\srone}{T}}_\cale$ ignores the grade $r$ and contains terms that, when unboxed, are in $\bbrac{T}_\cale$. Therefore, $\gamma(x)\in\bbrac{T}_\cale$. Since the term is just $x$, $\gamma\; t=\gamma(x)$, satisfying the goal.
+		Let $\gamma\in\llbracket\srzero\cdot\Gamma,x:[T]_\srone\rrbracket$. The context relation gives $[\gamma(x)]\in\bbrac{\gradedt{\srone}{T}}_\cale$. By the definition of the modality relation (and grade-erasure), this implies $\gamma(x)\in\bbrac{T}_\cale$. Since the term is just $x$, $\gamma\;t=\gamma(x)$, satisfying the goal.
 		
 		\item \emph{Case} \textsc{T-Abs}: $\Gamma\vdash\lam{x:T_1}{t}:T_1\to^r T_2$ derived from $\Gamma,x:[T_1]_r\vdash t:T_2$.
 		
-		Assume $\gamma\in\bbrac{\Gamma}$, we must show that $\gamma(\lam{x:T_1}{t})\in\bbrac{T_1\to^r T_2}_\cale$. Since $\lam{x:T_1}{t}$ is a value, substituting $v$ into the body yields an expression in $\bbrac{T_2}_\cale$. Let $v\in\bbrac{\gradedt{r}{T_1}}_\cale$. Construct the extended substitution $\gamma'=\gamma,x\mapsto v$. By definition, $\gamma'\in\bbrac{\Gamma,x:[T_1]_r}$. By the induction hypothesis on the premise $\Gamma,x:[T_1]_r\vdash t:T_2$, we have $\gamma'\; t\in\bbrac{T_2}_\cale$. Since $\gamma'\; t=[x\mapsto v](\gamma\; t)$, the condition holds.
+		Assume $\gamma\in\bbrac{\Gamma}$; we must show that $\lam{x:T_1}{t}\in\bbrac{T_1\to^r T_2}_\calv$. Let $v$ be a value with $[v]\in\bbrac{\gradedt{r}{T_1}}_\cale$. Grade-erasure lets us extend $\gamma$ with $x\mapsto v$ to a substitution in $\bbrac{\Gamma,x:[T_1]_r}$. By the induction hypothesis on the premise $\Gamma,x:[T_1]_r\vdash t:T_2$, we obtain $[x\mapsto v]t\in\bbrac{T_2}_\cale$, which is the required function-value condition.
 		
 		\item \emph{Case} \textsc{T-App}: $\Gamma_1+r\cdot\Gamma_2\vdash t_1\; t_2:T_2$.
 		
-		Assume $\gamma\in\bbrac{\Gamma_1+r\cdot\Gamma_2}$. By the definition of context addition and scalar multiplication, $\gamma$ can be viewed as covering the requirements of both $\Gamma_1$ and $r\cdot\Gamma_2$. By the induction hypothesis on $t_1$, $\gamma\; t_1\in\bbrac{T_1\to^r T_2}_\cale$. This implies $\gamma\; t_1$ reduces to a value $\lam{x:T_1}{t}$ in $\bbrac{T_1\to^r T_2}_\calv$. By the induction hypothesis on $t_2$, $\gamma\; t_2\in\bbrac{T_1}_\cale$. The definition of the function value relation states that applying such a function to an argument $v$ (where $[v]\in\bbrac{\gradedt{r}{T_1}}_\cale$) yields a result in $\bbrac{T_2}_\cale$. Since $\gamma\; t_2\in\bbrac{T_1}_\cale$, its corresponding modality $[\gamma\; t_2]$ is in $\bbrac{\gradedt{r}{T_1}}_\cale$. Thus, $(\gamma\; t_1)\; (\gamma\; t_2)\in\bbrac{T_2}_\cale$.
+		Assume $\gamma\in\bbrac{\Gamma_1+r\cdot\Gamma_2}$. By the context-combination and grade-erasure lemmas, $\gamma$ satisfies both premise contexts. The induction hypotheses place the function and argument in their respective expression relations. To verify the expression relation, consider any terminating evaluation of the application: call-by-value evaluation then gives terminating evaluations of the function and argument to related values. The function-value clause and the application reduction rule give the result in $\bbrac{T_2}_\cale$; no termination of an arbitrary semantic substitution is assumed.
 		
 		\item \emph{Case} \textsc{T-Pro}: $r\cdot\Gamma\vdash [t]:\gradedt{r}{T}$.
 		
-		By induction hypothesis, $\gamma\; t\in\bbrac{T}_\cale$. By the definition, the unary relation $\bbrac{\gradedt{r}{T}}_\calv$ consists of terms $[u]$ where $[u]\in\bbrac{T}_\cale$. Thus, we have $[\gamma\; t]\in\bbrac{\gradedt{r}{T}}_calv$, so $\gamma\; [t]\in\bbrac{\gradedt{r}{T}}_\cale$.
+		By the induction hypothesis, $\gamma\; t\in\bbrac{T}_\cale$. Evaluation compatibility gives $[\gamma\;t]\reduce^*[v]$ whenever $\gamma\;t\reduce^*v$ with $v\in\bbrac{T}_\calv$; hence the boxed term is in $\bbrac{\gradedt{r}{T}}_\cale$.
 		
 		\item \emph{Case} \textsc{T-Let}: $\Gamma_1+\Gamma_2\vdash\unp{x}{t_1}{t_2}:T_2$.
 		
-		By the induction hypothesis, $\gamma\; t_1\in\bbrac{\gradedt{r}{T_1}}_\cale$, so $\gamma\; t_1\reduce^*[v]$ with $v\in\bbrac{T_1}_\cale$. By the induction hypothesis on $t_2$ with $\gamma[x\mapsto v]$, we have $\gamma'\; t_2\in\bbrac{T_2}_\cale$.
+		By the induction hypothesis, $\gamma\; t_1\in\bbrac{\gradedt{r}{T_1}}_\cale$. To verify the expression relation, consider any terminating evaluation of the let-term. Call-by-value evaluation then gives $\gamma\;t_1\reduce^*[v]$ with $[v]$ a canonical boxed value and $v\in\bbrac{T_1}_\calv$. Extend $\gamma$ with $x\mapsto v$ and apply the induction hypothesis to $t_2$; the let-elimination step then preserves the expression relation. No termination of an arbitrary semantic substitution is assumed.
 		
-		\item \emph{Case} \textsc{T-Approx}: $\Gamma,x:[T_1]_s:t:T_2$ where $s\le r$.
+		\item \emph{Case} \textsc{T-Approx}: $\Gamma,x:[T_1]_s:t:T_2$ where $r\le s$.
 		
 		The unary relation for $\gradedt{r}{T}$ does not depend on the value of $r$. Thus, if $\gamma(x)\in\bbrac{\gradedt{s}{T_1}}_\cale$, it is also in $\bbrac{\gradedt{r}{T_1}}_\cale$. The induction hypothesis applies directly.
 		
-		\item \emph{Case} \textsc{T-Record}: $\Gamma\vdash\{l_i=t_i^{i\in 1..n}:\{l_i:T_i^{i\in 1..n}\}\}$.
+		\item \emph{Case} \textsc{T-Record}: $\sum_i\Gamma_i\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$.
 		
-		By the induction hypothesis, for all $i\in 1..n$, $\gamma\; t_i\in\bbrac{T_i}_\cale$. Thus, $\{l_i=t_i^{i\in 1..n}\}\in\bbrac{\{l_i:T_i^{i\in 1..n}\}}_\calv$.
+		By context-combination compatibility, $\gamma$ satisfies each field context $\Gamma_i$. The induction hypothesis therefore gives $\gamma\; t_i\in\bbrac{T_i}_\cale$ for every $i$; any terminating record has fields in the corresponding value relations, so it belongs to $\bbrac{\{l_i:T_i^{i\in 1..n}\}}_\cale$.
 		
 		\item \emph{Case} \textsc{T-Proj}: $\Gamma\vdash t.l_i:T_i$.
 		
-		By the induction hypothesis, $\gamma\; t\reduce^*\{l_i=v_i^{i\in 1..n}\}$ where $v_i\in\bbrac{T_i}_\calv$. So $t.l_i\in\bbrac{T_i}_\calv$.
+		By the induction hypothesis, every terminating evaluation of $\gamma\;t$ yields a record $\{l_i=v_i^{i\in 1..n}\}$ with $v_i\in\bbrac{T_i}_\calv$. The projection rule then yields $\gamma\;(t.l_i)\in\bbrac{T_i}_\cale$.
 		
 		\item \emph{Case} \textsc{T-True}: $\srzero\cdot\Gamma\vdash\true:\bool$.
 		
@@ -1439,25 +1441,25 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 		
 		This follows immediately from the definition $\false\in\bbrac{\bool}_\calv$.
 		
-		\item \emph{Case} \textsc{T-Cond}: $r\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T_1$.
+		\item \emph{Case} \textsc{T-Cond}: $r\cdot\Gamma_1+\Gamma_2+\Gamma_3\vdash\cond{t_1}{t_2}{t_3}:T_1$.
 		
-		By the induction hypothesis, $\gamma\; t_1\in\bbrac{\bool}_\cale$. If $\gamma\; t_1\reduce^*\true$, we use the induction hypothesis on $t_2$, which gives $\gamma\; t_2\in\bbrac{T_1}_\cale$, so the result is in $\bbrac{T_1}_\cale$. If $\gamma\; t_1\reduce^*\false$, we use the induction hypothesis on $t_3$, which also results in $\bbrac{T_1}_\cale$.
+		By context-combination compatibility, $\gamma$ satisfies each premise context. The induction hypothesis gives $\gamma\;t_1\in\bbrac{\bool}_\cale$. If it evaluates to $\true$ (respectively, $\false$), the corresponding branch evaluates in $\bbrac{T_1}_\cale$ by the induction hypothesis, and the conditional evaluation preserves that relation.
 		
 		\item \emph{Case} \textsc{T-Zero}: $\srzero\cdot\Gamma\vdash 0:\nat$.
 		
 		This follows immediately from the definition $0\in\bbrac{\nat}_\calv$.
 		
-		\item \emph{Case} \textsc{T-Succ}: $\srzero\cdot\Gamma\vdash\suc{n}:\nat$.
+		\item \emph{Case} \textsc{T-Succ}: $\Gamma\vdash\suc{t}:\nat$.
 		
-		This follows immediately from the definition $\suc{n}\in\bbrac{\nat}_\calv$.
+		By the induction hypothesis and the successor rule, the result reduces to the canonical numeral $n+1$, which is in $\bbrac{\nat}_\calv$.
 		
-		\item \emph{Case} \textsc{T-Pred}: $\srzero\cdot\Gamma\vdash\prd{n}:\nat$.
+		\item \emph{Case} \textsc{T-Pred}: $\Gamma\vdash\prd{t}:\nat$.
 		
-		This follows immediately from the definition $\prd{n}\in\bbrac{\nat}_\calv$.
+		By the induction hypothesis and the predecessor rules, the term reduces to a canonical numeral (either $0$ or $n$), hence belongs to $\bbrac{\nat}_\cale$.
 		
-		\item \emph{Case} \textsc{T-IsZero}: $\srzero\cdot\Gamma\vdash\iszero{n}:\bool$.
+		\item \emph{Case} \textsc{T-IsZero}: $\Gamma\vdash\iszero{t}:\bool$.
 		
-		This follows immediately from the definition $\iszero{n}\in\bbrac{\bool}_\calv$.
+		By the induction hypothesis and the zero-test rules, the term reduces to either $\true$ or $\false$, both of which are in $\bbrac{\bool}_\calv$.
 		
 		\item \emph{Case} \textsc{T-Unit}: $\srzero\cdot\Gamma\vdash\unt:\untt$.
 		
@@ -1465,7 +1467,7 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 		
 		\item \emph{Case} \textsc{T-Unit-Elim}: $\Gamma_1+\Gamma_2\vdash\une{t_1}{t_2}:T_2$.
 		
-		We have $\gamma\; t_1\reduce^*\unt$. Applying the induction hypothesis to $t_2$ yields the result in $\bbrac{T_2}_\cale$.
+		For any terminating evaluation of the unit-elimination term, call-by-value evaluation first gives $\gamma\;t_1\reduce^*\unt$. The induction hypothesis on $t_2$ then yields the result in $\bbrac{T_2}_\cale$.
 	\end{itemize}
 \end{proof}
 
@@ -1476,39 +1478,39 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 	\begin{itemize}
         \item \emph{Case} \textsc{T-Var}: $\srzero\cdot\Gamma,x:[T]_\srone\vdash x:T$.
         
-        The inputs are related at $\bbrac{\gradedt{\srone}{T}}^{adv}_\calv$. Since $\srone\le adv$ by the minimality of $\srone$. We use the observable case of the modality relation, this gets us $(v_1,v_2)\in\bbrac{T}^{adv}_\cale$
+        The context relation gives the inputs in $\bbrac{\gradedt{\srone}{T}}^{adv}_\cale$. Since $\srone\le adv$ by minimality of $\srone$, this is the observable modality case, which yields related underlying values at $T$.
         
         \item \emph{Case} \textsc{T-Abs}: $\Gamma\vdash\lam{x:T_1}{t}:T_1\to^r T_2$, $\Gamma,x:[T_1]_r\vdash t:T_2$.
         
-        For $(u_1,u_2)\in\bbrac{\gradedt{r}{T_1}}^{adv}_\calv$, the induction hypothesis on the function body $t$ gives $(\gamma_1[x\mapsto u_1\; t,\gamma_2[x\mapsto u_2]\; t])\in\bbrac{T_2}^{adv}_\cale$, which satisfies the goal.
+        For $(u_1,u_2)\in\bbrac{\gradedt{r}{T_1}}^{adv}_\cale$, extend the two related substitutions with the underlying values and apply the induction hypothesis to obtain $([x\mapsto u_1]t,[x\mapsto u_2]t)\in\bbrac{T_2}^{adv}_\cale$, which is the function-value condition.
         
         \item \emph{Case} \textsc{T-App}: $\Gamma_1+r\cdot\Gamma_2\vdash t_1\; t_2:T_2$.
         
-        By the induction hypothesis, we have $(\gamma_1\; t_1,\gamma_2\; t_1)\in\bbrac{T_1\to^r T_2}^{adv}_\cale$ and $(\gamma_1\; t_2,\gamma_2\; t_2)\in\bbrac{T_1}^{adv}_\cale$, which implies their promotions are related in $\bbrac{\gradedt{r}{T_1}}^{adv}_\cale$. Applying the function binary relation yields the result in $\bbrac{T_2}^{adv}_\cale$.
+        By the induction hypotheses and the context-combination/scaling lemmas, the function and argument pairs are in their respective expression relations. Reduction compatibility lifts the argument relation to the required pair of boxed values, and the binary function-value clause yields the result in $\bbrac{T_2}^{adv}_\cale$.
         
         \item \emph{Case} \textsc{T-Pro}: $r\cdot\Gamma\vdash [t]:\gradedt{r}{T}$.
         
         We have 2 subcases to consider:
         \begin{itemize}
-            \item \emph{Subcase} $r\le adv$: We need $(\gamma_1\; t,\gamma_2\; t)\in\bbrac{T}^{adv}_\cale$. The induction hypothesis on $t$ requires inputs to be related at $s$ (for $x:[T]_s\in\Gamma$). We have inputs at $r\cdot s$. Since $r\le adv$ and $s\le adv$, $r\cdot s\le adv\cdot adv\le adv$ by the weak idempotence. Thus, the context is sufficiently related.
-            \item \emph{Subcase} $\neg(r\le adv)$: The relation is satisfied if $\gamma_1\; t,\gamma_2\; t\in\bbrac{T}_\cale$, which holds by the Unary Fundamental Theorem.
+            \item \emph{Subcase} $r\le adv$: The required context-relatedness follows from the explicit monotonicity and compatibility lemmas for context scaling; these lemmas must be proved for the chosen semiring (they do not follow from weak idempotence alone). Applying the induction hypothesis then gives the related promoted values.
+            \item \emph{Subcase} $\neg(r\le adv)$: both promoted results satisfy the unary relation by the Unary Fundamental Theorem, which is exactly the unobservable branch of the modality relation.
         \end{itemize}
         
         \item \emph{Case} \textsc{T-Let}: $\Gamma_1+\Gamma_2\vdash\unp{x}{t_1}{t_2}:T_2$.
         
-        If the eliminated modality has grade $r\le adv$, the unwrapped values are related by the observable case of the modality binary relation. If $\neg(r\le adv)$, the unboxed values are only required to be unarily well-typed, and the result of $t_2$ will also be $\secret$ as the grade of the result will necessarily not be less or equal than $adv$. Thus, the goal is satisfied.
+        If the eliminated modality has grade $r\le adv$, the unwrapped values are related by the observable case of the modality binary relation, and the induction hypothesis applies to the body. If $\neg(r\le adv)$, the two unwrapped values need only satisfy the unary relation; the body case therefore requires the corresponding non-observability/compatibility lemma for the graded context, rather than any claim about the result type's grade.
         
-        \item \emph{Case} \textsc{T-Approx}: $\Gamma,x:[T_1]_s:t:T_2$ where $s\le r$.
+        \item \emph{Case} \textsc{T-Approx}: $\Gamma,x:[T_1]_s:t:T_2$ where $r\le s$.
         
-        If $r\le adv$, then $s\le adv$. If the inputs were related at $r$, they are related at $s$ by the monotonicity of the binary relation.
+        The conclusion context has the lower grade $r$, with $r\le s$. Related substitutions at grade $r$ also satisfy the premise context at grade $s$, because the binary modality relation becomes weaker as the grade increases. The induction hypothesis therefore applies to the premise derivation.
         
-        \item \emph{Case} \textsc{T-Record}: $\Gamma\vdash\{l_i=t_i^{i\in 1..n}:\{l_i:T_i^{i\in 1..n}\}\}$.
+        \item \emph{Case} \textsc{T-Record}: $\sum_i\Gamma_i\vdash\{l_i=t_i^{i\in 1..n}\}:\{l_i:T_i^{i\in 1..n}\}$.
         
-        By the induction hypothesis, for all $i\in 1..n$, we have $(\gamma_1\; t_i,\gamma_2\; t_i')\in\bbrac{T_i}^{adv}_\cale$, combining these we get $(\{l_i=t_i^{i\in 1..n}\},\{l_i=t_i'^{i\in 1..n}\})\in\bbrac{\{l_i:T_i^{i\in 1..n}\}}^{adv}_\cale$.
+		By context-combination compatibility, both related substitutions satisfy each field context $\Gamma_i$. The induction hypotheses give related field evaluations, and combining them yields $(\{l_i=t_i^{i\in 1..n}\},\{l_i=t_i'^{i\in 1..n}\})\in\bbrac{\{l_i:T_i^{i\in 1..n}\}}^{adv}_\cale$.
         
         \item \emph{Case} \textsc{T-Proj}: $\Gamma\vdash t.l_i:T_i$.
         
-        By the induction hypothesis, $t=\{l_i=t_i^{i\in 1..n}\}$ with $(\gamma_1\; t_i,\gamma_2\; t_i)\in\bbrac{T_i}^{adv}_\cale$, we have $(\gamma_1\; (t.l_i),\gamma_2\; (t.l_i))\in\bbrac{T_i}^{adv}_\cale$, satisfying the goal.
+        By the induction hypothesis, both scrutinees reduce to related record values. Reduction compatibility and the projection closure lemma then imply that their projections are related at $T_i$; no syntactic equality of the two records is required.
         
         \item \emph{Case} \textsc{T-True}: $\srzero\cdot\Gamma\vdash\true:\bool$.
         
@@ -1518,29 +1520,29 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
         
         This follows immediately from the definition $(\false,\false)\in\bbrac{\bool}^{adv}_\calv$.
         
-        \item \emph{Case} \textsc{T-Cond}: $r\cdot\Gamma_1+\Gamma_2\vdash\cond{t_1}{t_2}{t_3}:T_1$.
+        \item \emph{Case} \textsc{T-Cond}: $r\cdot\Gamma_1+\Gamma_2+\Gamma_3\vdash\cond{t_1}{t_2}{t_3}:T_1$.
         
         We have two subcases to consider:
         \begin{itemize}
             \item \emph{Subcase} $r\le adv$: Then $\gamma_1\; t_1$ and $\gamma_2\; t_1$ must result in the same boolean value. Thus both execution take the same branch, and the induction hypothesis on the executed branch applies.
-            \item \emph{Subcase} $\neg(r\le adv)$: The branches might differ. However, since the result $T_1$ must be at a grade that is also secret since $\neg(r'\le adv)$, the relation is satisfied via the Unary Fundamental Theorem.
+            \item \emph{Subcase} $\neg(r\le adv)$: The branches may differ. The result is related only via the unobservable case, using the unary fundamental theorem and the compatibility lemma for conditionals; no result grade is implied by \textsc{T-Cond}.
         \end{itemize}
         
         \item \emph{Case} \textsc{T-Zero}: $\srzero\cdot\Gamma\vdash 0:\nat$.
         
         This follows immediately from the definition $(0,0)\in\bbrac{\nat}^{adv}_\calv$.
         
-        \item \emph{Case} \textsc{T-Succ}: $\srzero\cdot\Gamma\vdash\suc{n}:\nat$.
+        \item \emph{Case} \textsc{T-Succ}: $\Gamma\vdash\suc{t}:\nat$.
         
-        This follows immediately from the definition $(\suc{n},\suc{n})\in\bbrac{\nat}^{adv}_\calv$.
+        The two evaluations reduce, by compatibility, to canonical numerals; the numeral relation relates identical canonical forms.
         
-        \item \emph{Case} \textsc{T-Pred}: $\srzero\cdot\Gamma\vdash\prd{n}:\nat$.
+        \item \emph{Case} \textsc{T-Pred}: $\Gamma\vdash\prd{t}:\nat$.
         
-        This follows immediately from the definition $(\prd{n},\prd{n})\in\bbrac{\nat}^{adv}_\calv$.
+        The predecessor evaluations reduce to identical canonical numerals, which are related at $\nat$.
         
-        \item \emph{Case} \textsc{T-IsZero}: $\srzero\cdot\Gamma\vdash\iszero{n}:\bool$.
+        \item \emph{Case} \textsc{T-IsZero}: $\Gamma\vdash\iszero{t}:\bool$.
         
-        This follows immediately from the definition $(\iszero{n},\iszero{n})\in\bbrac{\bool}^{adv}_\calv$.
+        The two zero tests reduce to identical booleans, which are related at $\bool$.
         
         \item \emph{Case} \textsc{T-Unit}: $\srzero\cdot\Gamma\vdash\unt:\untt$.
         
@@ -1555,14 +1557,8 @@ See \hyperref[app-b]{Appendix B} for a proof that this algebra is a indeed a sem
 \subsubsection{Noninterference of \textsc{FlowSTLC}}
 
 \begin{proof}
-	We need to substitute $v_1$ and $v_2$ for $x$. So we must show that the pair of environments $(\{x\mapsto v_1\},\{x\mapsto v_2\})$ is in the binary context relation $\bbrac{x:[T]_s}^{adv}$. This requires us to show $([v_1],[v_2])\in\bbrac{\gradedt{s}{T}}^{adv}_\cale$. 
-	
-	Given $adv\le s$ and $adv\ne s$, we check if $s\le adv$ (is the input observable?). If $s\le adv$, combined with $adv\le s$ and the antisymmmetry axiom of the noninterfering semiring, we would have $s=adv$. But the premise states that $adv\ne s$. Therefore we have $\neg(s\le adv)$.
-	
-	From $\neg(s\le adv)$, the definition of the graded modality relation $\bbrac{\gradedt{s}{T}}^{adv}_\cale$ simplifies to the unary check $\{([u_1],[u_2])\mid u_1\in\bbrac{[T]}_\cale\wedge u_2\in\bbrac{[T]}_\cale\}$. By the Unary Fundamental Theorem. since $v_1$ and $v_2$ are well-typed terms, they are in $\bbrac[T]_\cale$. Thus, the inputs are validly related in the context $(\gamma_1,\gamma_2)\in\bbrac{x:[T]_s}^{adv}$.
-	
-	By the Binary Fundamental Theorem, the results are related at the output type: $([x\mapsto v_1]t,[x\mapsto v_2])\in\bbrac{\gradedt{adv}{\base}}^{adv}_\cale$. The output has a grade $adv$ and clearly by reflexivity $adv\le adv$. Therefore, the relation uses the observable case $\{([u_1],[u_2])\mid(u_1,u_2)\in\bbrac{\base}^{adv}_\cale\}$. This implies the unboxed terms $u_1,u_2$ are related in $\bbrac{\base}^{adv}_\cale$.
-	
-	By the definition of the binary relation at base types, the terms reduce to identical values, so the equality $[x\mapsto v_1]t\equiv[x\mapsto v_2]t$ holds.
+	Because $adv\le r$ and $adv\ne r$, antisymmetry gives $\neg(r\le adv)$. The unary fundamental theorem places each closed input value in $\bbrac{T_1}_\cale$, so the pair of substitutions is related at the unobservable modality $\gradedt{r}{T_1}$. Applying the binary fundamental theorem yields
+	$([x\mapsto v_1]t,[x\mapsto v_2]t)\in\bbrac{\gradedt{adv}{\base}}^{adv}_\cale$.
+	Since $adv\le adv$, any terminating results are related at the underlying base type. The base relation relates identical canonical observations, hence if the two evaluations terminate with $[b_1]$ and $[b_2]$, then $b_1=b_2$. No equality of the complete terms is implied without an additional normalization/confluence argument.
 \end{proof}
 \end{document}
