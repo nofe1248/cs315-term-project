@@ -4,7 +4,7 @@ with a graded modality indexed by two security labels, Secret (confidential) and
 
 This repository includes:
 - A small interpreter for the language written in Java 17 (flowstlc-compiler/)
-- A (unfinished) Lean 4 formalization for FlowSTLC (flowstlc/)
+- A Lean 4 formalization for FlowSTLC (flowstlc/)
 - LaTeX source for the final presentation slides (presentation-slides/)
 - LaTeX source for the progress report slides (progress-report/)
 - LaTeX source & PDF file for the project report (report/)

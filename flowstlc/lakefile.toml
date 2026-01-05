@@ -1,0 +1,6 @@
+name = "flowstlc"
+version = "0.1.0"
+defaultTargets = ["FlowSTLC"]
+
+[[lean_lib]]
+name = "FlowSTLC"
